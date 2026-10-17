@@ -15,7 +15,7 @@ import android.view.inputmethod.InputMethodManager
 class CustomKeyboardService : InputMethodService() {
 
     private val keyProcessor = KeyProcessor()
-    private val keyboardController = KeyboardController(keyProcessor)
+    private val keyboardController = KeyboardController()
     private var keyboardView: KeyboardView? = null
 
     override fun onCreate() {

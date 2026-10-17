@@ -127,25 +127,6 @@ class EditorInfoAnalyzerImpl : EditorInfoAnalyzer {
             }
         }
 
-        // 3. Defense-in-depth: Inspect hint text for sensitive keywords if not already sensitive
-        if (!isSensitive && hint != null) {
-            val lowerHint = hint.lowercase()
-            if (lowerHint.contains("password") || lowerHint.contains("passcode") ||
-                lowerHint.contains("secret") || lowerHint.contains("pin") ||
-                lowerHint.contains("cvv") || lowerHint.contains("security code") ||
-                lowerHint.contains("otp")
-            ) {
-                fieldCategory = FieldCategory.OTHER_SENSITIVE
-                isSensitive = true
-                suggestedClassification = when {
-                    lowerHint.contains("otp") -> InputClassification.SENSITIVE_OTP
-                    lowerHint.contains("pin") -> InputClassification.SENSITIVE_PIN
-                    lowerHint.contains("cvv") || lowerHint.contains("security code") -> InputClassification.SENSITIVE_CREDIT_CARD
-                    else -> InputClassification.SENSITIVE_PASSWORD
-                }
-            }
-        }
-
         return EditorContext(
             fieldCategory = fieldCategory,
             isSensitive = isSensitive,
@@ -166,7 +147,7 @@ class EditorInfoAnalyzerImpl : EditorInfoAnalyzer {
             EditorInfo.IME_ACTION_SEND -> "Send"
             EditorInfo.IME_ACTION_NEXT -> "Next"
             EditorInfo.IME_ACTION_DONE -> "Done"
-            else -> if (isMultiline) "↵" else "↵"
+            else -> "↵"
         }
     }
 

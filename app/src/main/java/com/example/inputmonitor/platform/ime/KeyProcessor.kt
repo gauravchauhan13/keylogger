@@ -1,5 +1,6 @@
 package com.example.inputmonitor.platform.ime
 
+import android.text.InputType
 import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
@@ -54,7 +55,7 @@ class KeyProcessor {
                     if (actionId != EditorInfo.IME_ACTION_NONE && actionId != EditorInfo.IME_ACTION_UNSPECIFIED) {
                         inputConnection.performEditorAction(actionId)
                     } else {
-                        val isMultiline = (editorInfo?.inputType?.and(EditorInfo.TYPE_TEXT_FLAG_MULTI_LINE)) != 0
+                        val isMultiline = (editorInfo?.inputType?.and(InputType.TYPE_TEXT_FLAG_MULTI_LINE)) != 0
                         if (isMultiline) {
                             inputConnection.commitText("\n", 1)
                         } else {

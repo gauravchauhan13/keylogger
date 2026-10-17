@@ -1,6 +1,5 @@
 package com.example.inputmonitor.platform.ime
 
-import android.text.InputType
 import android.view.inputmethod.EditorInfo
 import com.example.inputmonitor.domain.privacy.EditorContext
 import com.example.inputmonitor.domain.privacy.FieldCategory
@@ -15,7 +14,6 @@ import kotlinx.coroutines.flow.asStateFlow
  * and context-specific input type adaptation (Architecture.md §26, §29, §30).
  */
 class KeyboardController(
-    private val keyProcessor: KeyProcessor = KeyProcessor(),
     private val editorInfoAnalyzer: EditorInfoAnalyzer = EditorInfoAnalyzerImpl()
 ) {
 
