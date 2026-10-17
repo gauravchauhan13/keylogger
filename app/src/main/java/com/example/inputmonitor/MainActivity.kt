@@ -13,15 +13,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.example.inputmonitor.ui.navigation.AppNavigation
 import com.example.inputmonitor.ui.theme.InputMonitorTheme
 
 /**
  * Main host activity.
  *
- * Hosts the Compose navigation graph.
- * Will contain: Onboarding → Setup → Dashboard → other screens.
- *
- * Phase 0: Displays a minimal placeholder to verify build and launch.
+ * Hosts the Compose navigation graph (Architecture.md §12):
+ * Onboarding → Setup → Dashboard ↔ Events / Statistics / Settings
  */
 class MainActivity : ComponentActivity() {
 
@@ -30,24 +29,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             InputMonitorTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    PlaceholderScreen(modifier = Modifier.padding(innerPadding))
-                }
+                AppNavigation()
             }
         }
-    }
-}
-
-@Composable
-private fun PlaceholderScreen(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Input Monitor — Phase 0 Baseline",
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onSurface
-        )
     }
 }

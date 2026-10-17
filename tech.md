@@ -164,14 +164,14 @@ Espresso Core           — Instrumentation (3.6.1)
 
 ---
 
-## Baseline Build Metrics (Phase 0)
+## Baseline Build Metrics
 
-| Metric | Measurement | Notes |
-|---|---|---|
-| Debug APK Size | 48,608,524 bytes (~46.35 MB) | Multi-ABI (arm64-v8a, armeabi-v7a, x86, x86_64), unminified, uncompressed native libs |
-| Release APK Size | 22,945,972 bytes (~21.88 MB) | Multi-ABI, R8 minified, resource shrunk. SQLCipher native .so comprises majority of binary |
-| Unit Test Suite | PASSED | SanityTest verified via `testDebugUnitTest` |
-| Gradle Tasks Executed | 36 (debug) / 70 (release + test) | Clean execution, configuration cache stored |
+| Metric | Phase 0 Baseline | Phase 1 Foundation | Notes |
+|---|---|---|---|
+| Debug APK Size | 48,608,524 bytes (~46.35 MB) | 48,720,225 bytes (~46.46 MB) | Multi-ABI, unminified, full Compose + Navigation graph |
+| Release APK Size | 22,945,972 bytes (~21.88 MB) | 23,318,576 bytes (~22.24 MB) | Multi-ABI, R8 minified + shrunk resources. Delta is ~370 KB for Navigation and 6 screens |
+| Unit Test Suite | 1 test (PASSED) | 3 suites / 5 tests (PASSED) | SanityTest, DispatcherProviderTest, NavigationRoutesTest |
+| Gradle Tasks Executed | 70 tasks | 89 tasks | Clean execution, configuration cache stored |
 
 ---
 

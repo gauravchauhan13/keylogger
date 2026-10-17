@@ -2532,7 +2532,7 @@ ApplicationAccessibility       CustomKeyboardService
               │          │           │
               └──────────┼───────────┘
                          ▼
-                  Dashboard
+                      Dashboard
 ```
 
 ---

@@ -15,9 +15,11 @@ import android.app.Application
  */
 class MonitoringApplication : Application() {
 
+    lateinit var container: com.example.inputmonitor.di.AppContainer
+        private set
+
     override fun onCreate() {
         super.onCreate()
-        // Phase 0: Minimal application initialization.
-        // Dependencies will be wired here in Phase 1+.
+        container = com.example.inputmonitor.di.DefaultAppContainer(applicationContext)
     }
 }

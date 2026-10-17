@@ -27,11 +27,11 @@ Overall Status:
 IN PROGRESS
 
 Current Phase:
-Phase 0 complete; ready to begin Phase 1 (Android Foundation)
+Phase 1 complete; ready to begin Phase 2 (Data Foundation)
 
 Current Objective:
-Phase 0 Repository Preparation is fully validated with clean debug/release builds, Gradle 9.3.0 wrapper, unit test harness, and baseline APK metrics recorded.
-Ready to implement Phase 1.
+Phase 1 Android Foundation complete: DI container (AppContainer), DispatcherProvider, Compose navigation graph with 6 foundation screens, MainActivity integration, unit tests passing, clean debug/release builds verified.
+Ready to implement Phase 2 (Data Foundation / Room + SQLCipher).
 ```
 
 Update these values as development proceeds.
@@ -71,7 +71,7 @@ Phase-0 living documents (created and active):
 ```text
 [✓] Phase 0  — Repository Preparation
 
-[ ] Phase 1  — Android Foundation
+[✓] Phase 1  — Android Foundation
 
 [ ] Phase 2  — Data Foundation
 
@@ -130,13 +130,13 @@ Use:
 ## Currently Implementing
 
 ```text
-Ready to begin Phase 1 — Android Foundation.
+Ready to begin Phase 2 — Data Foundation.
 ```
 
 ## Current Goal
 
 ```text
-Implement Phase 1: Establish application container, manual dependency injection wiring, base ViewModel architecture, navigation routing framework, and core utilities.
+Implement Phase 2: Design and implement the encrypted Room database using SQLCipher and Android Keystore, entity models, DAOs, type converters, and repository abstractions.
 ```
 
 ---
@@ -174,28 +174,42 @@ Currently:
   - Unit test harness established and passing (SanityTest)
   - Clean debug build verified (app-debug.apk: 48,608,524 bytes)
   - Clean release build with R8 verified (app-release.apk: 22,945,972 bytes)
+
+✓ Phase 1 completed:
+  - Implemented DispatcherProvider and DefaultDispatcherProvider (DEC-013)
+  - Implemented AppContainer and DefaultAppContainer (DEC-004 manual DI)
+  - Wired AppContainer inside MonitoringApplication
+  - Implemented Screen sealed hierarchy for type-safe routing (DEC-014)
+  - Implemented AppNavigation NavHost connecting all core routes
+  - Implemented foundation screens: OnboardingScreen, SetupScreen, DashboardScreen, EventsScreen, StatisticsScreen, SettingsScreen
+  - Updated MainActivity to host AppNavigation with edge-to-edge Material 3 theme
+  - Added unit test suites (SanityTest, DispatcherProviderTest, NavigationRoutesTest) — all passing
+  - Verified clean debug build (app-debug.apk: 48,720,225 bytes)
+  - Verified clean release build with R8 shrinking (app-release.apk: 23,318,576 bytes)
 ```
 
 ---
 
 # 7. Next Tasks
 
-Next tasks for Phase 1 (Android Foundation):
+Next tasks for Phase 2 (Data Foundation):
 
 ```text
-1. Begin Phase 1 (Android Foundation).
+1. Begin Phase 2 (Data Foundation).
 
-2. Implement manual DI Application container (AppContainer / MonitoringApplication).
+2. Implement Android Keystore cryptographic key manager for database encryption key (DEC-005).
 
-3. Implement core coroutine dispatcher provider interface and implementations.
+3. Define Room entities for MonitoringSession, InteractionEvent, and AppMetadata.
 
-4. Establish ViewModel factory and lifecycle integration.
+4. Implement Room DAOs with Flow query support and transaction boundaries.
 
-5. Establish Compose navigation foundation (routes, navigation graph scaffold).
+5. Implement Room database configuration with SQLCipher OpenHelperFactory.
 
-6. Verify debug build, release build, and unit tests.
+6. Implement DataStore preferences repository for application settings and onboarding state (DEC-009).
 
-7. Update decision.md, tech.md, flow.md, and PROGRESS.md.
+7. Add database unit and integration tests.
+
+8. Update decision.md, tech.md, flow.md, and PROGRESS.md.
 ```
 
 ---
@@ -371,7 +385,7 @@ Therefore persistent content-bearing IME event logging must NOT be considered re
 
 ```text
 Unit tests:
-ACTIVE — SanityTest verified via testDebugUnitTest (passed)
+ACTIVE — 3 test suites / 5 tests passing (SanityTest, DispatcherProviderTest, NavigationRoutesTest) via testDebugUnitTest
 
 Database tests:
 NOT STARTED
@@ -389,7 +403,7 @@ Performance tests:
 NOT STARTED
 
 Release tests:
-ACTIVE — assembleRelease verified with R8 minification and resource shrinking (passed)
+ACTIVE — assembleRelease with R8 minification verified (passed)
 ```
 
 ---
@@ -418,23 +432,23 @@ Legend:
 
 # 14. Current Performance Baseline
 
-Measured during Phase 0 baseline:
+Measured during Phase 1:
 
 ```text
 Debug APK size:
-48,608,524 bytes (~46.35 MB) — multi-ABI unminified
+48,720,225 bytes (~46.46 MB) — multi-ABI unminified with full Compose NavHost + 6 screens
 
 Release APK size:
-22,945,972 bytes (~21.88 MB) — multi-ABI, R8 minified + shrunk resources
+23,318,576 bytes (~22.24 MB) — multi-ABI, R8 minified + shrunk resources
 
 Cold startup:
-TBD (measured in Phase 1)
+TBD (measured on physical/virtual device)
 
 Idle RAM:
-TBD (measured in Phase 1)
+TBD
 
 Active RAM:
-TBD (measured in Phase 1)
+TBD
 
 Database size:
 TBD (measured in Phase 2)
@@ -471,16 +485,16 @@ None. Project compiles, links, passes unit tests, and produces valid debug and r
 
 ```text
 Build:
-assembleRelease + testDebugUnitTest
+testDebugUnitTest + assembleDebug + assembleRelease
 
 Type:
-Release APK (signed with debug key for testing) + Unit test run
+Full verification build (Debug APK + Release APK + Unit test suite)
 
 Date:
 2026-10-17
 
 Result:
-SUCCESS (70 actionable tasks: 18 executed, 52 up-to-date)
+SUCCESS (89 actionable tasks: 25 executed, 64 up-to-date)
 ```
 
 Update after meaningful verified builds.
@@ -774,7 +788,7 @@ UNDER REVIEW
 
 # 28. Recent Major Decisions
 
-Summary of Phase 0 decisions (see `decision.md` for full rationale):
+Summary of recent architectural decisions (see `decision.md` for full rationale):
 
 ```text
 DEC-001: Kotlin as primary language
@@ -789,6 +803,8 @@ DEC-009: Jetpack Preferences DataStore for user settings
 DEC-010: com.example.inputmonitor package name
 DEC-011: Gradle 9.3.0 wrapper for JDK 25 LTS runtime compatibility with AGP 8.7.3
 DEC-012: Disable release build lint vital analysis due to JDK 25 parser limitation; enable debug signing on release build for test baseline
+DEC-013: DispatcherProvider interface with DefaultDispatcherProvider for structured concurrency & testability
+DEC-014: Sealed class hierarchy (Screen) for compile-time safe navigation routes
 ```
 
 ---
@@ -799,7 +815,7 @@ At the end of every session there must be ONE clearly stated next action.
 
 Current:
 
-> Begin Phase 1 (Android Foundation): Implement manual dependency injection application container (`AppContainer`), CoroutineDispatcherProvider, BaseViewModel, Compose navigation graph scaffold, and verify clean compilation and tests.
+> Begin Phase 2 (Data Foundation): Implement Android Keystore key management, SQLCipher Room database configuration, domain/entity models, DAOs, and DataStore preferences repository.
 
 This prevents a future agent from guessing where to resume.
 

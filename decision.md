@@ -440,3 +440,60 @@ Positive:
 Negative:
 - Release lint analysis must be run with a compatible JDK or isolated CI runner once AGP updates JDK 25 lint parser
 
+---
+
+## DEC-013 — Coroutine Dispatcher Provider pattern for concurrency and testing
+
+Date:
+2026-10-17
+
+Status:
+Accepted
+
+Context:
+Coroutines are executed across background threads (IO, Default) and UI threads (Main). Directly calling `Dispatchers.IO` inside business logic or repositories couples code to Android runtime and makes unit tests non-deterministic without test dispatcher overrides.
+
+Decision:
+Define an interface `DispatcherProvider` with `DefaultDispatcherProvider` that injects `main`, `io`, `default`, and `unconfined` dispatchers. Provide this dependency via `AppContainer`.
+
+Reason:
+- Enables unit tests to swap in `StandardTestDispatcher` or `UnconfinedTestDispatcher` without mocking static Android dispatchers
+- Zero external dependency
+- Standard Android architecture best practice
+
+Consequences:
+Positive:
+- Deterministic, fast unit tests
+- Clear thread boundaries across presentation, domain, and data layers
+Negative:
+- Requires passing `DispatcherProvider` to async classes
+
+---
+
+## DEC-014 — Sealed class navigation hierarchy
+
+Date:
+2026-10-17
+
+Status:
+Accepted
+
+Context:
+Navigation Compose uses route strings. Raw string literals across screens lead to runtime errors, typos, and routing inconsistency.
+
+Decision:
+Define a sealed class `Screen(val route: String, val title: String)` defining all top-level destinations (`Onboarding`, `Setup`, `Dashboard`, `Events`, `Statistics`, `Settings`).
+
+Reason:
+- Centralizes all screen routes in one place
+- Unit-testable for unique routes and valid titles
+- Safe refactoring when routes change
+
+Consequences:
+Positive:
+- Compile-time checking of destination names
+- Tested route uniqueness
+Negative:
+- None
+
+
