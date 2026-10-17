@@ -23,6 +23,12 @@ import com.example.inputmonitor.domain.usecase.PauseMonitoringSessionUseCase
 import com.example.inputmonitor.domain.usecase.ResumeMonitoringSessionUseCase
 import com.example.inputmonitor.domain.usecase.StartMonitoringSessionUseCase
 import com.example.inputmonitor.domain.usecase.StopMonitoringSessionUseCase
+import com.example.inputmonitor.domain.privacy.PrivacyFilter
+import com.example.inputmonitor.domain.privacy.PrivacyFilterImpl
+import com.example.inputmonitor.domain.privacy.SensitiveInputDetector
+import com.example.inputmonitor.domain.privacy.SensitiveInputDetectorImpl
+import com.example.inputmonitor.platform.ime.analysis.EditorInfoAnalyzer
+import com.example.inputmonitor.platform.ime.analysis.EditorInfoAnalyzerImpl
 
 /**
  * Application-level dependency container implementing manual DI (DEC-004).
@@ -39,6 +45,9 @@ interface AppContainer {
     val preferencesRepository: PreferencesRepository
     val sessionManager: SessionManager
     val sessionGate: SessionGate
+    val editorInfoAnalyzer: EditorInfoAnalyzer
+    val sensitiveInputDetector: SensitiveInputDetector
+    val privacyFilter: PrivacyFilter
     val startMonitoringSessionUseCase: StartMonitoringSessionUseCase
     val pauseMonitoringSessionUseCase: PauseMonitoringSessionUseCase
     val resumeMonitoringSessionUseCase: ResumeMonitoringSessionUseCase
@@ -81,6 +90,18 @@ class DefaultAppContainer(
 
     override val sessionGate: SessionGate by lazy {
         SessionGateImpl(sessionManager)
+    }
+
+    override val editorInfoAnalyzer: EditorInfoAnalyzer by lazy {
+        EditorInfoAnalyzerImpl()
+    }
+
+    override val sensitiveInputDetector: SensitiveInputDetector by lazy {
+        SensitiveInputDetectorImpl()
+    }
+
+    override val privacyFilter: PrivacyFilter by lazy {
+        PrivacyFilterImpl()
     }
 
     override val startMonitoringSessionUseCase: StartMonitoringSessionUseCase by lazy {

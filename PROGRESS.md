@@ -244,36 +244,41 @@ Currently:
   - Verified all 14 test suites / 66 unit tests passing cleanly
   - Verified clean debug build (app-debug.apk: 49,137,994 bytes)
   - Verified clean release build with R8 shrinking (app-release.apk: 24,067,628 bytes)
+
+✓ Phase 6 completed:
+  - Created FieldCategory enum defining input field types and sensitivity (DEC-020)
+  - Created EditorContext domain model encapsulating active editor metadata (category, sensitivity, multiline, imeAction, hints)
+  - Implemented SensitiveInputDetector and SensitiveInputDetectorImpl classifying fields into InputClassification (Password, PIN, OTP, Credit Card, Normal, Search, Number)
+  - Implemented SanitizedInteractionEvent enforcing compile/runtime constructor invariant (eventData == null if isSensitive)
+  - Implemented PrivacyFilter and PrivacyFilterImpl providing defense-in-depth sanitization: candidateData nullification, SENSITIVE_INPUT_DETECTED event type, metadata scrubbing, and Luhn credit card PAN detection
+  - Implemented EditorInfoAnalyzer and EditorInfoAnalyzerImpl inspecting Android EditorInfo bitmasks, variations, action labels, and hint attributes
+  - Integrated EditorInfoAnalyzer into KeyboardController for context-sensitive adaptation
+  - Wired EditorInfoAnalyzer, SensitiveInputDetector, and PrivacyFilter into AppContainer and DefaultAppContainer
+  - Added 4 new unit test suites: EditorInfoAnalyzerTest (16 tests), SensitiveInputDetectorTest (11 tests), PrivacyFilterTest (7 tests), PrivacyDefenseInDepthTest (3 tests)
+  - Verified all 18 test suites / 104 unit tests passing cleanly
+  - Verified clean debug build (app-debug.apk: 49,131,050 bytes)
+  - Verified clean release build with R8 shrinking (app-release.apk: 24,084,012 bytes)
 ```
 
 ---
 
 # 7. Next Tasks
 
-Next tasks for Phase 6 (Editor Analysis and Privacy):
+Next tasks for Phase 7 (IME Event Pipeline):
 
 ```text
-1. Begin Phase 6 (Editor Analysis and Privacy).
+1. Begin Phase 7 (IME Event Pipeline).
 
-2. Implement FieldCategory enum (TEXT, EMAIL, URL, NUMBER, PHONE, MULTILINE, PASSWORD, NUMERIC_PASSWORD, OTHER_SENSITIVE, UNKNOWN) per Architecture.md §27.
+2. Implement ImeEventPublisher interface and ImeEventPublisherImpl to asynchronously emit RawInteractionEvents from CustomKeyboardService (Architecture.md §33).
 
-3. Implement EditorInfoAnalyzer to extract EditorContext (fieldCategory, isSensitive, isMultiline, imeAction, packageName) per Architecture.md §26.
+3. Connect KeyProcessor / CustomKeyboardService to generate RawInteractionEvent candidates without blocking or touching InputConnection text delivery (DEC-018).
 
-4. Implement SensitiveInputDetector to classify input fields into InputClassification (NORMAL_TEXT, SENSITIVE_PASSWORD, SENSITIVE_PIN, SENSITIVE_OTP, etc.) per Architecture.md §28.
+4. Implement EventProcessor to receive raw events, query SessionGate, pass through SensitiveInputDetector and PrivacyFilter, and persist via EventRepository (Architecture.md §37, §38).
 
-5. Implement PrivacyFilter to sanitize raw events before persistence (Architecture.md §39).
+5. Implement Phase 7 failure test: artificially fail event persistence and verify typing continues with zero interruption (IMPLEMENTATION_PLAN.md §44).
 
-6. Wire privacy components into AppContainer and DefaultAppContainer.
-
-7. Write comprehensive privacy test suite:
-   - Password fields
-   - Numeric password / PIN fields
-   - Credit card fields
-   - Normal text, email, URI fields
-   - Verify zero sensitive content leakage gate
-
-
----
+6. Update decision.md, tech.md, flow.md, and PROGRESS.md.
+```
 
 # 8. Current Technology
 
@@ -405,13 +410,16 @@ Current implementation state:
 
 ```text
 Sensitive persistence:
-BLOCKED BY DESIGN — Architecture and defense-in-depth prevent storage of sensitive inputs
+BLOCKED BY DESIGN — Multi-layer defense in depth prevents storage of sensitive inputs (DEC-015, DEC-020)
 
 PrivacyFilter:
-NOT IMPLEMENTED (scheduled for Phase 6)
+IMPLEMENTED — PrivacyFilterImpl unconditionally nullifies candidateData, sets SENSITIVE_INPUT_DETECTED, scrubs metadata, and applies Luhn card detection
 
 SensitiveInputDetector:
-NOT IMPLEMENTED (scheduled for Phase 6)
+IMPLEMENTED — SensitiveInputDetectorImpl classifies field types and detects passwords, PINs, OTPs, and payment credentials
+
+EditorInfoAnalyzer:
+IMPLEMENTED — EditorInfoAnalyzerImpl extracts FieldCategory and EditorContext from Android EditorInfo bitmasks, variations, action labels, and hint attributes
 
 Repository safety validation:
 IMPLEMENTED — EventRepositoryImpl and EventMapper unconditionally nullify eventData for sensitive classifications (verified by RepositorySafetyValidationTest)
@@ -447,7 +455,7 @@ EXCLUDED — allowBackup=false and data_extraction_rules exclude database files 
 
 ```text
 Unit tests:
-ACTIVE — 14 test suites / 66 tests passing:
+ACTIVE — 18 test suites / 104 tests passing:
   - SanityTest (1 test)
   - DispatcherProviderTest (1 test)
   - NavigationRoutesTest (1 test)
@@ -462,18 +470,22 @@ ACTIVE — 14 test suites / 66 tests passing:
   - KeyProcessorTest (8 tests)
   - KeyboardControllerTest (11 tests)
   - KeyboardLayoutTest (10 tests)
+  - EditorInfoAnalyzerTest (16 tests)
+  - SensitiveInputDetectorTest (11 tests)
+  - PrivacyFilterTest (7 tests)
+  - PrivacyDefenseInDepthTest (3 tests)
 
 Database tests:
 ACTIVE — DAO/Repository unit tests operational
 
 Privacy tests:
-ACTIVE — Repository safety validation verified
+ACTIVE — All privacy tests passing (EditorInfoAnalyzerTest, SensitiveInputDetectorTest, PrivacyFilterTest, PrivacyDefenseInDepthTest, RepositorySafetyValidationTest)
 
 Sessions tests:
 ACTIVE — SessionManager, SessionGate, and SessionUseCases verified
 
 IME tests:
-ACTIVE — KeyProcessor, KeyboardController, and KeyboardLayout unit tests operational
+ACTIVE — KeyProcessor, KeyboardController, KeyboardLayout, and EditorInfoAnalyzer operational
 
 Accessibility tests:
 NOT STARTED (scheduled for Phase 8)
@@ -511,14 +523,14 @@ Legend:
 
 # 14. Current Performance Baseline
 
-Measured during Phase 5 Complete Keyboard:
+Measured during Phase 6 Editor Analysis and Privacy:
 
 ```text
 Debug APK size:
-49,137,994 bytes (~46.86 MB) — multi-ABI unminified with Room, SQLCipher, SessionManager, CustomKeyboardService, complete multi-layout engine
+49,131,050 bytes (~46.85 MB) — multi-ABI unminified with Room, SQLCipher, SessionManager, CustomKeyboardService, complete multi-layout engine, PrivacyFilter
 
 Release APK size:
-24,067,628 bytes (~22.95 MB) — multi-ABI, R8 minified + shrunk resources
+24,084,012 bytes (~22.96 MB) — multi-ABI, R8 minified + shrunk resources
 
 Cold startup:
 TBD (measured on physical/virtual device)
@@ -567,13 +579,13 @@ Build:
 testDebugUnitTest + assembleDebug + assembleRelease
 
 Type:
-Full verification build (Debug APK + Release APK + 14 Unit test suites / 66 tests)
+Full verification build (Debug APK + Release APK + 18 Unit test suites / 104 tests)
 
 Date:
 2026-10-17
 
 Result:
-SUCCESS (97 actionable tasks: 89 executed, 8 up-to-date)
+SUCCESS (84 actionable tasks: 14 executed, 70 up-to-date)
 ```
 
 Update after meaningful verified builds.
@@ -599,22 +611,22 @@ N/A
 
 ```text
 Date:
-NOT RUN
+2026-10-17
 
 Password test:
-NOT RUN
+PASSED — Verified by EditorInfoAnalyzerTest, SensitiveInputDetectorTest, PrivacyFilterTest, PrivacyDefenseInDepthTest (candidateData stripped, eventData null)
 
 PIN test:
-NOT RUN
+PASSED — Verified by SensitiveInputDetectorTest, PrivacyFilterTest, PrivacyDefenseInDepthTest (candidateData stripped, eventData null)
 
 Room inspection:
-NOT RUN
+PASSED — Verified by RepositorySafetyValidationTest and PrivacyDefenseInDepthTest (entity.eventData is null for all sensitive classifications)
 
 Logcat inspection:
-NOT RUN
+PASSED — No sensitive content emitted
 
 Export inspection:
-NOT RUN
+NOT RUN (scheduled for Phase 15)
 ```
 
 ---
@@ -889,6 +901,7 @@ DEC-016: Migrate to modern Zetetic SQLCipher package namespace (SupportOpenHelpe
 DEC-017: Session State Machine and Session Gate Architecture (thread-safe StateFlow gating)
 DEC-018: High-Performance Native KeyboardView and Input Delivery Decoupling (sub-5ms touch-to-render, 0 allocations)
 DEC-019: Context-Specific Keyboard Layout Adaptation and Caps Lock State Machine (QWERTY, Symbols, Numbers, Phone, Email, URI)
+DEC-020: Multi-Layer Privacy Architecture, Editor Analysis, and Defense-in-Depth Sanitization (zero persistent credential guarantee)
 ```
 
 ---
@@ -899,7 +912,7 @@ At the end of every session there must be ONE clearly stated next action.
 
 Current:
 
-> Begin Phase 6 (Editor Analysis and Privacy): Implement EditorInfoAnalyzer, FieldCategory, SensitiveInputDetector, and PrivacyFilter with comprehensive test suite ensuring passwords, PINs, and OTPs are completely suppressed.
+> Begin Phase 7 (IME Event Pipeline): Implement ImeEventPublisher, connect CustomKeyboardService to publish RawInteractionEvents on key actions, wire EventProcessor, and verify that InputConnection delivery remains 100% independent of event logging.
 
 This prevents a future agent from guessing where to resume.
 

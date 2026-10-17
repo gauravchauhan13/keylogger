@@ -136,6 +136,19 @@ Native Android IME framework. Only supported way to implement a custom keyboard.
 
 ---
 
+## Privacy & Sensitive Input Protection
+
+- Editor Analysis: `EditorInfoAnalyzer` / `EditorInfoAnalyzerImpl` inspecting inputType bitmasks, variations, action labels, and hint attributes into `FieldCategory` and `EditorContext` (DEC-020)
+- Classification: `SensitiveInputDetector` / `SensitiveInputDetectorImpl` classifying fields into `InputClassification` (Password, PIN, Credit Card, OTP, Normal, Search, Number)
+- Sanitization: `PrivacyFilter` / `PrivacyFilterImpl` discarding candidateData, replacing eventType with `SENSITIVE_INPUT_DETECTED`, stripping unsafe metadata, and defense-in-depth Luhn card number detection
+- Invariant Safety: `SanitizedInteractionEvent` runtime constructor assertion (`require(eventData == null)` when `isSensitive`)
+- Persistence Defense: `EventRepositoryImpl` and `EventMapper` independently nullifying sensitive content (DEC-015, DEC-020)
+
+Reason:
+Mandated by SECURITY.md §4, §5, §6, §8 and Architecture.md §26, §27, §28, §39. Multi-layer defense in depth ensures zero persistent credential leakage.
+
+---
+
 ## Interaction Monitoring
 
 Android `AccessibilityService`
@@ -174,12 +187,12 @@ Espresso Core           — Instrumentation (3.6.1)
 
 ## Baseline Build Metrics
 
-| Metric | Phase 0 Baseline | Phase 1 Foundation | Phase 2 Data Foundation | Phase 3 Monitoring Sessions | Phase 4 Basic Keyboard | Phase 5 Complete Keyboard | Notes |
-|---|---|---|---|---|---|---|---|
-| Debug APK Size | 48,608,524 bytes (~46.35 MB) | 48,720,225 bytes (~46.46 MB) | 48,887,522 bytes (~46.62 MB) | 49,048,518 bytes (~46.78 MB) | 49,127,138 bytes (~46.85 MB) | 49,137,994 bytes (~46.86 MB) | Multi-ABI, unminified, Room + SQLCipher + DataStore + SessionManager + CustomKeyboardService |
-| Release APK Size | 22,945,972 bytes (~21.88 MB) | 23,318,576 bytes (~22.24 MB) | 23,646,256 bytes (~22.55 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | Multi-ABI, R8 minified + shrunk resources. Delta ~0 KB for layout definitions |
-| Unit Test Suite | 1 test (PASSED) | 3 suites / 5 tests (PASSED) | 8 suites / 17 tests (PASSED) | 11 suites / 37 tests (PASSED) | 14 suites / 52 tests (PASSED) | 14 suites / 66 tests (PASSED) | Added comprehensive multi-layout and shift state tests |
-| Gradle Tasks Executed | 70 tasks | 89 tasks | 91 tasks | 94 tasks | 97 tasks | 97 tasks | Clean execution, KSP processing Room schemas, config cache stored |
+| Metric | Phase 0 Baseline | Phase 1 Foundation | Phase 2 Data Foundation | Phase 3 Monitoring Sessions | Phase 4 Basic Keyboard | Phase 5 Complete Keyboard | Phase 6 Editor & Privacy | Notes |
+|---|---|---|---|---|---|---|---|---|
+| Debug APK Size | 48,608,524 bytes (~46.35 MB) | 48,720,225 bytes (~46.46 MB) | 48,887,522 bytes (~46.62 MB) | 49,048,518 bytes (~46.78 MB) | 49,127,138 bytes (~46.85 MB) | 49,137,994 bytes (~46.86 MB) | 49,131,050 bytes (~46.85 MB) | Multi-ABI, unminified, Room + SQLCipher + DataStore + SessionManager + CustomKeyboardService + PrivacyFilter |
+| Release APK Size | 22,945,972 bytes (~21.88 MB) | 23,318,576 bytes (~22.24 MB) | 23,646,256 bytes (~22.55 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | 24,084,012 bytes (~22.96 MB) | Multi-ABI, R8 minified + shrunk resources. Delta +16 KB for privacy subsystem |
+| Unit Test Suite | 1 test (PASSED) | 3 suites / 5 tests (PASSED) | 8 suites / 17 tests (PASSED) | 11 suites / 37 tests (PASSED) | 14 suites / 52 tests (PASSED) | 14 suites / 66 tests (PASSED) | 18 suites / 104 tests (PASSED) | Added EditorInfoAnalyzerTest, SensitiveInputDetectorTest, PrivacyFilterTest, PrivacyDefenseInDepthTest |
+| Gradle Tasks Executed | 70 tasks | 89 tasks | 91 tasks | 94 tasks | 97 tasks | 97 tasks | 84 tasks | Clean execution, KSP processing Room schemas, config cache stored |
 
 ---
 

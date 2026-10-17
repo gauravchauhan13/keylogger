@@ -2,6 +2,10 @@ package com.example.inputmonitor.platform.ime
 
 import android.text.InputType
 import android.view.inputmethod.EditorInfo
+import com.example.inputmonitor.domain.privacy.EditorContext
+import com.example.inputmonitor.domain.privacy.FieldCategory
+import com.example.inputmonitor.platform.ime.analysis.EditorInfoAnalyzer
+import com.example.inputmonitor.platform.ime.analysis.EditorInfoAnalyzerImpl
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,7 +15,8 @@ import kotlinx.coroutines.flow.asStateFlow
  * and context-specific input type adaptation (Architecture.md §26, §29, §30).
  */
 class KeyboardController(
-    private val keyProcessor: KeyProcessor = KeyProcessor()
+    private val keyProcessor: KeyProcessor = KeyProcessor(),
+    private val editorInfoAnalyzer: EditorInfoAnalyzer = EditorInfoAnalyzerImpl()
 ) {
 
     private var _shiftState = ShiftState.OFF
@@ -25,6 +30,10 @@ class KeyboardController(
     private var _enterLabel = "↵"
     val enterLabel: String
         get() = _enterLabel
+
+    private var _currentEditorContext: EditorContext? = null
+    val currentEditorContext: EditorContext?
+        get() = _currentEditorContext
 
     private var lastShiftTapTime: Long = 0L
 
@@ -83,36 +92,20 @@ class KeyboardController(
 
     /**
      * Updates editor info to configure appropriate layouts (Email, URI, Numeric, Phone)
-     * and action key labels (Go, Search, Send, Next, Done, etc.).
+     * and action key labels (Go, Search, Send, Next, Done, etc.) via [EditorInfoAnalyzer].
      */
     fun updateEditorInfo(editorInfo: EditorInfo?) {
-        val inputType = editorInfo?.inputType ?: InputType.TYPE_CLASS_TEXT
-        val inputClass = inputType and InputType.TYPE_MASK_CLASS
-        val variation = inputType and InputType.TYPE_MASK_VARIATION
+        val context = editorInfoAnalyzer.analyze(editorInfo)
+        _currentEditorContext = context
 
-        _layoutType = when (inputClass) {
-            InputType.TYPE_CLASS_PHONE -> KeyboardLayoutType.PHONE
-            InputType.TYPE_CLASS_NUMBER -> KeyboardLayoutType.NUMERIC
-            InputType.TYPE_CLASS_TEXT -> {
-                when (variation) {
-                    InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
-                    InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS -> KeyboardLayoutType.EMAIL
-                    InputType.TYPE_TEXT_VARIATION_URI -> KeyboardLayoutType.URI
-                    else -> KeyboardLayoutType.QWERTY
-                }
-            }
+        _layoutType = when (context.fieldCategory) {
+            FieldCategory.PHONE -> KeyboardLayoutType.PHONE
+            FieldCategory.NUMBER, FieldCategory.NUMERIC_PASSWORD -> KeyboardLayoutType.NUMERIC
+            FieldCategory.EMAIL -> KeyboardLayoutType.EMAIL
+            FieldCategory.URL -> KeyboardLayoutType.URI
             else -> KeyboardLayoutType.QWERTY
         }
-
-        val action = editorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION)
-        _enterLabel = when (action) {
-            EditorInfo.IME_ACTION_GO -> "Go"
-            EditorInfo.IME_ACTION_SEARCH -> "Search"
-            EditorInfo.IME_ACTION_SEND -> "Send"
-            EditorInfo.IME_ACTION_NEXT -> "Next"
-            EditorInfo.IME_ACTION_DONE -> "Done"
-            else -> "↵"
-        }
+        _enterLabel = context.imeActionLabel
         refreshLayout()
     }
 

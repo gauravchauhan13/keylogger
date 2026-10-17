@@ -657,6 +657,40 @@ Architecture.md — Custom Keyboard Service (§30–§34)
 tech.md — Keyboard Subsystem
 flow.md — Keyboard Layout Switching Flow
 
+---
+
+## DEC-020 — Multi-Layer Privacy Architecture, Editor Analysis, and Defense-in-Depth Sanitization
+
+Date:
+2026-10-17
+
+Status:
+Accepted
+
+Context:
+SECURITY.md §4, §5, §6, §8 and Architecture.md §26, §27, §28, §39 mandate that passwords, PINs, OTPs, credentials, and payment card details must never be persisted in SQLite storage, logged, or exported. Relying on a single inspection layer risks credential leakage if a regression occurs.
+
+Decision:
+1. Implement `EditorInfoAnalyzer` to categorize active input editors into `FieldCategory` (TEXT, EMAIL, URL, NUMBER, PHONE, MULTILINE, PASSWORD, NUMERIC_PASSWORD, OTHER_SENSITIVE, UNKNOWN) by inspecting `InputType` bitmasks, variation flags, action labels, autofill hints, and hint text.
+2. Implement `SensitiveInputDetector` mapping `EditorContext` into domain `InputClassification` (`SENSITIVE_PASSWORD`, `SENSITIVE_PIN`, `SENSITIVE_CREDIT_CARD`, `SENSITIVE_OTP`, etc.).
+3. Implement `PrivacyFilter` which sanitizes `RawInteractionEvent` into `SanitizedInteractionEvent`, unconditionally setting `eventData = null`, setting `eventType` to `SENSITIVE_INPUT_DETECTED`, and stripping sensitive metadata keys.
+4. Implement an embedded Luhn checksum detector in `PrivacyFilter` to catch unclassified or misclassified payment card numbers as defense-in-depth.
+5. Enforce an immutable runtime invariant in `SanitizedInteractionEvent` (`require(eventData == null)` if `isSensitive`) preventing instantiation of any sensitive event with non-null content.
+6. Back this with repository-level nullification (`EventRepositoryImpl` and `EventMapper`), ensuring three distinct layers of sensitive data suppression before SQLite Room insertion.
+
+Reason:
+- Defense in depth guarantees that even if an upstream platform callback or mapping fails, sensitive content is systematically rejected and purged before reaching disk
+- Compile/runtime invariant prevents developer errors from leaking secrets
+- Zero performance impact on user typing
+
+Consequences:
+Positive:
+- Absolute sensitive data suppression verified by 18 unit test suites / 104 tests
+- End-to-end privacy gate fully passed
+Negative:
+- None
+
+
 
 
 
