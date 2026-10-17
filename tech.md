@@ -123,10 +123,11 @@ Avoids Hilt's APK size (~200-400KB), build-time annotation processing, and start
 
 - Framework: Android `InputMethodService` (`CustomKeyboardService`)
 - Subtype: English US (`en_US`, keyboard mode)
-- Layout Engine: `KeyboardLayout` QWERTY layout with dynamic capitalization
+- Layout Engine: `KeyboardLayout` multi-layout engine: QWERTY, Symbols, More Symbols, Numeric, Phone, Email, and URI (DEC-019)
+- Context Adaptation: Automatic layout selection and IME action label resolution based on active `EditorInfo` (DEC-019)
 - View Architecture: Native Android `KeyboardView` with state-list drawables, sub-5ms touch response, zero GC allocations per key press
 - Key Processor: `KeyProcessor` direct `InputConnection` text and key delivery (`commitText`, `deleteSurroundingText`, `performEditorAction`), completely decoupled from logging and persistence (DEC-018)
-- Shift Engine: `KeyboardController` 3-stage state machine (`OFF` -> `ON_ONCE` -> `CAPS_LOCK` -> `OFF`)
+- Shift & Caps Lock: `KeyboardController` 3-stage state machine (`OFF` -> `ON_ONCE` -> `CAPS_LOCK` -> `OFF`) with double-tap detection and single-character auto-reset
 - Feedback: Android `AudioManager` sound effects (`FX_KEYPRESS_STANDARD`) and `HapticFeedbackConstants.KEYBOARD_TAP`
 - Switching: Native `InputMethodManager.showInputMethodPicker()` integration
 
@@ -173,12 +174,12 @@ Espresso Core           — Instrumentation (3.6.1)
 
 ## Baseline Build Metrics
 
-| Metric | Phase 0 Baseline | Phase 1 Foundation | Phase 2 Data Foundation | Phase 3 Monitoring Sessions | Phase 4 Basic Keyboard | Notes |
-|---|---|---|---|---|---|---|
-| Debug APK Size | 48,608,524 bytes (~46.35 MB) | 48,720,225 bytes (~46.46 MB) | 48,887,522 bytes (~46.62 MB) | 49,048,518 bytes (~46.78 MB) | 49,127,138 bytes (~46.85 MB) | Multi-ABI, unminified, Room + SQLCipher + DataStore + SessionManager + CustomKeyboardService |
-| Release APK Size | 22,945,972 bytes (~21.88 MB) | 23,318,576 bytes (~22.24 MB) | 23,646,256 bytes (~22.55 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | Multi-ABI, R8 minified + shrunk resources. Delta ~0 KB for native KeyboardView |
-| Unit Test Suite | 1 test (PASSED) | 3 suites / 5 tests (PASSED) | 8 suites / 17 tests (PASSED) | 11 suites / 37 tests (PASSED) | 14 suites / 52 tests (PASSED) | Added KeyProcessorTest, KeyboardControllerTest, KeyboardLayoutTest |
-| Gradle Tasks Executed | 70 tasks | 89 tasks | 91 tasks | 94 tasks | 97 tasks | Clean execution, KSP processing Room schemas, config cache stored |
+| Metric | Phase 0 Baseline | Phase 1 Foundation | Phase 2 Data Foundation | Phase 3 Monitoring Sessions | Phase 4 Basic Keyboard | Phase 5 Complete Keyboard | Notes |
+|---|---|---|---|---|---|---|---|
+| Debug APK Size | 48,608,524 bytes (~46.35 MB) | 48,720,225 bytes (~46.46 MB) | 48,887,522 bytes (~46.62 MB) | 49,048,518 bytes (~46.78 MB) | 49,127,138 bytes (~46.85 MB) | 49,137,994 bytes (~46.86 MB) | Multi-ABI, unminified, Room + SQLCipher + DataStore + SessionManager + CustomKeyboardService |
+| Release APK Size | 22,945,972 bytes (~21.88 MB) | 23,318,576 bytes (~22.24 MB) | 23,646,256 bytes (~22.55 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | Multi-ABI, R8 minified + shrunk resources. Delta ~0 KB for layout definitions |
+| Unit Test Suite | 1 test (PASSED) | 3 suites / 5 tests (PASSED) | 8 suites / 17 tests (PASSED) | 11 suites / 37 tests (PASSED) | 14 suites / 52 tests (PASSED) | 14 suites / 66 tests (PASSED) | Added comprehensive multi-layout and shift state tests |
+| Gradle Tasks Executed | 70 tasks | 89 tasks | 91 tasks | 94 tasks | 97 tasks | 97 tasks | Clean execution, KSP processing Room schemas, config cache stored |
 
 ---
 

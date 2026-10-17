@@ -226,31 +226,52 @@ Currently:
   - Verified all 14 test suites / 52 unit tests passing cleanly
   - Verified clean debug build (app-debug.apk: 49,127,138 bytes)
   - Verified clean release build with R8 shrinking (app-release.apk: 24,067,628 bytes)
+
+✓ Phase 5 completed:
+  - Extended KeyboardLayoutType with EMAIL, URI, SYMBOLS, SYMBOLS_MORE, NUMERIC, and PHONE (DEC-019)
+  - Implemented complete keyboard layouts in KeyboardLayout:
+    * Symbols layout with 1-0 numbers, punctuation symbols (@, #, $, %, &, -, +, (, ), /), and =<\ switch key
+    * Symbols More layout with math, brackets, and currency symbols (~, `, |, ^, \, <, >, {, }, €, £, etc.)
+    * Numeric 3x4 dialpad layout with 1-9, 0, ., backspace, and enter
+    * Phone dialpad layout with 1-9, 0, *, #, +, backspace, and enter
+    * Email and URI specialized bottom rows with dedicated '@', '/', and '.com' keys
+  - Enhanced KeyboardController state machine:
+    * Double-tap Shift gesture (< 350ms) locks CAPS_LOCK (⇪)
+    * Single-tap Shift sets ON_ONCE (⬆) which auto-reverts to OFF (⇧) after committing a character
+    * Context-specific EditorInfo inputType adaptation: automatically selects PHONE, NUMERIC, EMAIL, URI, or QWERTY
+    * Action key label resolution: IME_ACTION_GO, SEARCH, SEND, NEXT, DONE, and multiline newline
+  - Added comprehensive unit tests in KeyboardControllerTest (11 tests) and KeyboardLayoutTest (10 tests)
+  - Verified all 14 test suites / 66 unit tests passing cleanly
+  - Verified clean debug build (app-debug.apk: 49,137,994 bytes)
+  - Verified clean release build with R8 shrinking (app-release.apk: 24,067,628 bytes)
 ```
 
 ---
 
 # 7. Next Tasks
 
-Next tasks for Phase 5 (Complete Keyboard):
+Next tasks for Phase 6 (Editor Analysis and Privacy):
 
 ```text
-1. Begin Phase 5 (Complete Keyboard).
+1. Begin Phase 6 (Editor Analysis and Privacy).
 
-2. Implement Symbols and Numbers keyboard layouts in KeyboardLayout.
+2. Implement FieldCategory enum (TEXT, EMAIL, URL, NUMBER, PHONE, MULTILINE, PASSWORD, NUMERIC_PASSWORD, OTHER_SENSITIVE, UNKNOWN) per Architecture.md §27.
 
-3. Enhance KeyboardController to switch between QWERTY, Symbols, and Numbers.
+3. Implement EditorInfoAnalyzer to extract EditorContext (fieldCategory, isSensitive, isMultiline, imeAction, packageName) per Architecture.md §26.
 
-4. Implement Caps Lock visual indicators and locking gestures (double tap Shift).
+4. Implement SensitiveInputDetector to classify input fields into InputClassification (NORMAL_TEXT, SENSITIVE_PASSWORD, SENSITIVE_PIN, SENSITIVE_OTP, etc.) per Architecture.md §28.
 
-5. Implement context-specific layout adaptation for EditorInfo input types (Numeric, Phone, URL, Email, Password).
+5. Implement PrivacyFilter to sanitize raw events before persistence (Architecture.md §39).
 
-6. Verify keyboard reliability and typing latency gates.
+6. Wire privacy components into AppContainer and DefaultAppContainer.
 
-7. Write comprehensive unit tests for layout transitions and context adaptations.
+7. Write comprehensive privacy test suite:
+   - Password fields
+   - Numeric password / PIN fields
+   - Credit card fields
+   - Normal text, email, URI fields
+   - Verify zero sensitive content leakage gate
 
-8. Update decision.md, tech.md, flow.md, and PROGRESS.md.
-```
 
 ---
 
@@ -426,7 +447,7 @@ EXCLUDED — allowBackup=false and data_extraction_rules exclude database files 
 
 ```text
 Unit tests:
-ACTIVE — 14 test suites / 52 tests passing:
+ACTIVE — 14 test suites / 66 tests passing:
   - SanityTest (1 test)
   - DispatcherProviderTest (1 test)
   - NavigationRoutesTest (1 test)
@@ -439,8 +460,8 @@ ACTIVE — 14 test suites / 52 tests passing:
   - SessionGateTest (4 tests)
   - SessionUseCasesTest (5 tests)
   - KeyProcessorTest (8 tests)
-  - KeyboardControllerTest (5 tests)
-  - KeyboardLayoutTest (2 tests)
+  - KeyboardControllerTest (11 tests)
+  - KeyboardLayoutTest (10 tests)
 
 Database tests:
 ACTIVE — DAO/Repository unit tests operational
@@ -490,11 +511,11 @@ Legend:
 
 # 14. Current Performance Baseline
 
-Measured during Phase 4 Basic Custom Keyboard:
+Measured during Phase 5 Complete Keyboard:
 
 ```text
 Debug APK size:
-49,127,138 bytes (~46.85 MB) — multi-ABI unminified with Room, SQLCipher, SessionManager, CustomKeyboardService
+49,137,994 bytes (~46.86 MB) — multi-ABI unminified with Room, SQLCipher, SessionManager, CustomKeyboardService, complete multi-layout engine
 
 Release APK size:
 24,067,628 bytes (~22.95 MB) — multi-ABI, R8 minified + shrunk resources
@@ -546,7 +567,7 @@ Build:
 testDebugUnitTest + assembleDebug + assembleRelease
 
 Type:
-Full verification build (Debug APK + Release APK + 14 Unit test suites / 52 tests)
+Full verification build (Debug APK + Release APK + 14 Unit test suites / 66 tests)
 
 Date:
 2026-10-17
@@ -863,6 +884,11 @@ DEC-011: Gradle 9.3.0 wrapper for JDK 25 LTS runtime compatibility with AGP 8.7.
 DEC-012: Disable release build lint vital analysis due to JDK 25 parser limitation; enable debug signing on release build for test baseline
 DEC-013: DispatcherProvider interface with DefaultDispatcherProvider for structured concurrency & testability
 DEC-014: Sealed class hierarchy (Screen) for compile-time safe navigation routes
+DEC-015: Enforce repository-level sensitive input suppression (zero credential persistence defense-in-depth)
+DEC-016: Migrate to modern Zetetic SQLCipher package namespace (SupportOpenHelperFactory)
+DEC-017: Session State Machine and Session Gate Architecture (thread-safe StateFlow gating)
+DEC-018: High-Performance Native KeyboardView and Input Delivery Decoupling (sub-5ms touch-to-render, 0 allocations)
+DEC-019: Context-Specific Keyboard Layout Adaptation and Caps Lock State Machine (QWERTY, Symbols, Numbers, Phone, Email, URI)
 ```
 
 ---
@@ -873,7 +899,7 @@ At the end of every session there must be ONE clearly stated next action.
 
 Current:
 
-> Begin Phase 2 (Data Foundation): Implement Android Keystore key management, SQLCipher Room database configuration, domain/entity models, DAOs, and DataStore preferences repository.
+> Begin Phase 6 (Editor Analysis and Privacy): Implement EditorInfoAnalyzer, FieldCategory, SensitiveInputDetector, and PrivacyFilter with comprehensive test suite ensuring passwords, PINs, and OTPs are completely suppressed.
 
 This prevents a future agent from guessing where to resume.
 

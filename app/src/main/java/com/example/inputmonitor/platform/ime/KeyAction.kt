@@ -14,12 +14,16 @@ sealed class KeyAction {
 }
 
 /**
- * Keyboard layout types.
+ * Keyboard layout types (SRS.md §21, §23).
  */
 enum class KeyboardLayoutType {
     QWERTY,
+    EMAIL,
+    URI,
     SYMBOLS,
-    NUMERIC
+    SYMBOLS_MORE,
+    NUMERIC,
+    PHONE
 }
 
 /**

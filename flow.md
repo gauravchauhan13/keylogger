@@ -308,6 +308,33 @@ CustomKeyboardService.handleKeyAction(action)
          └── Enter ──────► performEditorAction(actionId) or commitText("\n", 1)
 ```
 
+## 9.1 Keyboard Layout Adaptation & Switching Flow
+
+```text
+Editor started (CustomKeyboardService.onStartInputView)
+   │
+   ▼
+KeyboardController.onStartInputView(info)
+   │
+   ├── info.inputType & TYPE_CLASS_PHONE != 0 ──────────────► KeyboardLayoutType.PHONE
+   ├── info.inputType & TYPE_CLASS_NUMBER != 0 ─────────────► KeyboardLayoutType.NUMERIC
+   ├── info.inputType == TYPE_NULL ─────────────────────────► KeyboardLayoutType.NUMERIC
+   ├── info.inputType & TYPE_MASK_VARIATION == EMAIL_ADDRESS ► KeyboardLayoutType.EMAIL
+   ├── info.inputType & TYPE_MASK_VARIATION == URI ─────────► KeyboardLayoutType.URI
+   └── default ─────────────────────────────────────────────► KeyboardLayoutType.QWERTY
+   │
+   └── Action Key Label: IME_ACTION_GO ("Go"), SEARCH ("Search"), SEND ("Send"),
+       NEXT ("Next"), DONE ("Done"), multiline (↵)
+
+Interactive Layout Switching:
+[?123]   ──► KeyboardLayoutType.SYMBOLS
+[=<\ ]   ──► KeyboardLayoutType.SYMBOLS_MORE
+[ABC]    ──► KeyboardLayoutType.QWERTY (or EMAIL / URI based on context)
+[123#]   ──► Toggle between NUMERIC and PHONE / SYMBOLS
+Double-Tap [⇧] (within 350ms) ──► Caps Lock (⇪)
+Single-Tap [⇧] ──► Shift Once (⬆) ──► Reverts to (⇧) on alphanumeric key press
+```
+
 ---
 
 # 10. Sensitive Input Flow
@@ -434,5 +461,6 @@ Phase 1: Android foundation, navigation, edge-to-edge Compose UI (COMPLETE)
 Phase 2: Data foundation, Room encrypted database, KeyStore AES-GCM, Repositories, defense-in-depth safety validation (COMPLETE)
 Phase 3: Monitoring sessions, SessionManager state machine (INACTIVE <-> ACTIVE <-> PAUSED -> STOPPED), SessionGate event blocking, lifecycle use cases, Dashboard UI controls & badges (COMPLETE)
 Phase 4: Custom keyboard foundation, CustomKeyboardService, QWERTY layout, InputConnection text delivery, shift state machine, audio/haptic feedback (COMPLETE)
-Phase 5: Complete keyboard layouts (Symbols, Numbers, Caps lock, Editor actions) (NEXT)
+Phase 5: Complete keyboard layouts (Symbols, Numbers, Phone, Email, URI, Caps lock, Editor actions) (COMPLETE)
+Phase 6: Editor Analysis and Privacy (EditorInfoAnalyzer, SensitiveInputDetector, PrivacyFilter) (NEXT)
 ```

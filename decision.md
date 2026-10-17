@@ -615,6 +615,48 @@ Positive:
 Negative:
 - Requires custom touch and state-list management in `KeyboardView` rather than declarative Compose
 
+Related:
+Architecture.md — Custom Keyboard Service (§30–§34)
+tech.md — Keyboard Subsystem
+flow.md — IME Keyboard Input Flow
+
+---
+
+## DEC-019 — Context-Specific Keyboard Layout Adaptation and Caps Lock State Machine
+
+Date:
+2026-10-17
+
+Status:
+Accepted
+
+Context:
+Users type into diverse input fields (standard text, email addresses, URLs, numbers, telephone dials) across Android applications. Without context-sensitive adaptation, users would have to manually switch layouts repeatedly. Furthermore, handling uppercase text requires single-tap Shift (auto-reverting after one character) and double-tap Caps Lock (persisting until explicitly toggled off).
+
+Decision:
+1. Extend `KeyboardLayoutType` to include `EMAIL`, `URI`, `SYMBOLS`, `SYMBOLS_MORE`, `NUMERIC`, and `PHONE`.
+2. Implement `KeyboardController.onStartInputView(info: EditorInfo)` which inspects `info.inputType` bitmasks (`TYPE_CLASS_PHONE` -> PHONE, `TYPE_CLASS_NUMBER` / `TYPE_NULL` -> NUMERIC, `TYPE_TEXT_VARIATION_EMAIL_ADDRESS` -> EMAIL, `TYPE_TEXT_VARIATION_URI` -> URI, otherwise QWERTY) and extracts IME action labels (`IME_ACTION_GO`, `SEARCH`, `SEND`, `NEXT`, `DONE`, newline).
+3. Implement three-state `ShiftState` (`OFF`, `ON_ONCE`, `CAPS_LOCK`) with sub-millisecond double-tap threshold (350ms) to lock caps, and automatic reset to `OFF` after a single alphanumeric key commit if in `ON_ONCE` state.
+4. Implement specialized bottom rows for `EMAIL` (`@`, `.com`) and `URI` (`/`, `.com`), and dedicated dialpads for `NUMERIC` and `PHONE`.
+
+Reason:
+- Follows standard Android IME behavior expected by users
+- Contextual awareness improves input speed and ergonomics
+- Double-tap detection handles both rapid automated unit tests and human cadence reliably
+- Zero allocation layout definitions and high-performance in-place key label updates
+
+Consequences:
+Positive:
+- Seamless layout switching for specialized fields, full support for symbols, numbers, and phone numbers
+- 14 unit test suites / 66 tests passing cleanly
+Negative:
+- Additional layout definitions to maintain
+
+Related:
+Architecture.md — Custom Keyboard Service (§30–§34)
+tech.md — Keyboard Subsystem
+flow.md — Keyboard Layout Switching Flow
+
 
 
 

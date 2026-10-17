@@ -8,7 +8,7 @@ class KeyboardLayoutTest {
 
     @Test
     fun qwertyLayout_hasCorrectStructure() {
-        val layout = KeyboardLayout.createQwertyLayout(isShifted = false, enterLabel = "↵")
+        val layout = KeyboardLayout.createQwertyLayout(shiftState = ShiftState.OFF, enterLabel = "↵")
 
         assertEquals(KeyboardLayoutType.QWERTY, layout.type)
         assertEquals(4, layout.rows.size)
@@ -41,17 +41,78 @@ class KeyboardLayoutTest {
     }
 
     @Test
-    fun qwertyLayout_isShifted_setsUppercaseLabels() {
-        val unshifted = KeyboardLayout.createQwertyLayout(isShifted = false)
-        val shifted = KeyboardLayout.createQwertyLayout(isShifted = true)
+    fun qwertyLayout_shifted_and_capsLock_labels() {
+        val unshifted = KeyboardLayout.createQwertyLayout(shiftState = ShiftState.OFF)
+        val shifted = KeyboardLayout.createQwertyLayout(shiftState = ShiftState.ON_ONCE)
+        val capsLock = KeyboardLayout.createQwertyLayout(shiftState = ShiftState.CAPS_LOCK)
 
         assertEquals("q", unshifted.rows[0].keys[0].label)
+        assertEquals("⇧", unshifted.rows[2].keys[0].label)
+
         assertEquals("Q", shifted.rows[0].keys[0].label)
+        assertEquals("⬆", shifted.rows[2].keys[0].label)
 
-        assertEquals("a", unshifted.rows[1].keys[0].label)
-        assertEquals("A", shifted.rows[1].keys[0].label)
+        assertEquals("Q", capsLock.rows[0].keys[0].label)
+        assertEquals("⇪", capsLock.rows[2].keys[0].label)
+    }
 
-        assertEquals("z", unshifted.rows[2].keys[1].label)
-        assertEquals("Z", shifted.rows[2].keys[1].label)
+    @Test
+    fun symbolsLayout_hasNumbersAndPunctuation() {
+        val layout = KeyboardLayout.createSymbolsLayout(enterLabel = "↵")
+
+        assertEquals(KeyboardLayoutType.SYMBOLS, layout.type)
+        assertEquals(4, layout.rows.size)
+
+        // Row 1: 1-0
+        assertEquals(10, layout.rows[0].keys.size)
+        assertEquals("1", layout.rows[0].keys.first().label)
+        assertEquals("0", layout.rows[0].keys.last().label)
+
+        // Row 2: @ to /
+        assertEquals(10, layout.rows[1].keys.size)
+        assertEquals("@", layout.rows[1].keys.first().label)
+        assertEquals("/", layout.rows[1].keys.last().label)
+
+        // Row 3: =<\ to ? + Backspace
+        assertTrue(layout.rows[2].keys.first().action is KeyAction.SwitchLayout)
+        assertTrue(layout.rows[2].keys.last().action is KeyAction.Backspace)
+
+        // Row 4: ABC switch
+        assertTrue(layout.rows[3].keys.first().action is KeyAction.SwitchLayout)
+    }
+
+    @Test
+    fun symbolsMoreLayout_hasExtendedSymbols() {
+        val layout = KeyboardLayout.createSymbolsMoreLayout(enterLabel = "↵")
+
+        assertEquals(KeyboardLayoutType.SYMBOLS_MORE, layout.type)
+        assertEquals(4, layout.rows.size)
+        assertEquals("~", layout.rows[0].keys.first().label)
+        assertEquals("=", layout.rows[0].keys.last().label)
+    }
+
+    @Test
+    fun numericAndPhoneLayouts_haveDialpadKeys() {
+        val numeric = KeyboardLayout.createNumericLayout()
+        assertEquals(KeyboardLayoutType.NUMERIC, numeric.type)
+        assertEquals(4, numeric.rows.size)
+        assertEquals("1", numeric.rows[0].keys[0].label)
+
+        val phone = KeyboardLayout.createPhoneLayout()
+        assertEquals(KeyboardLayoutType.PHONE, phone.type)
+        assertEquals(4, phone.rows.size)
+        assertTrue(phone.rows[3].keys.any { it.label == "+" })
+        assertTrue(phone.rows[3].keys.any { it.label == "#" })
+    }
+
+    @Test
+    fun emailAndUriLayouts_haveContextualKeys() {
+        val email = KeyboardLayout.createQwertyLayout(type = KeyboardLayoutType.EMAIL)
+        assertTrue(email.rows[3].keys.any { it.label == "@" })
+        assertTrue(email.rows[3].keys.any { it.label == ".com" })
+
+        val uri = KeyboardLayout.createQwertyLayout(type = KeyboardLayoutType.URI)
+        assertTrue(uri.rows[3].keys.any { it.label == "/" })
+        assertTrue(uri.rows[3].keys.any { it.label == ".com" })
     }
 }
