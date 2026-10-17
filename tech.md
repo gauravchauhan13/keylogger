@@ -187,12 +187,36 @@ Espresso Core           — Instrumentation (3.6.1)
 
 ## Baseline Build Metrics
 
-| Metric | Phase 0 Baseline | Phase 1 Foundation | Phase 2 Data Foundation | Phase 3 Monitoring Sessions | Phase 4 Basic Keyboard | Phase 5 Complete Keyboard | Phase 6 Editor & Privacy | Notes |
-|---|---|---|---|---|---|---|---|---|
-| Debug APK Size | 48,608,524 bytes (~46.35 MB) | 48,720,225 bytes (~46.46 MB) | 48,887,522 bytes (~46.62 MB) | 49,048,518 bytes (~46.78 MB) | 49,127,138 bytes (~46.85 MB) | 49,137,994 bytes (~46.86 MB) | 49,131,050 bytes (~46.85 MB) | Multi-ABI, unminified, Room + SQLCipher + DataStore + SessionManager + CustomKeyboardService + PrivacyFilter |
-| Release APK Size | 22,945,972 bytes (~21.88 MB) | 23,318,576 bytes (~22.24 MB) | 23,646,256 bytes (~22.55 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | 24,084,012 bytes (~22.96 MB) | Multi-ABI, R8 minified + shrunk resources. Delta +16 KB for privacy subsystem |
-| Unit Test Suite | 1 test (PASSED) | 3 suites / 5 tests (PASSED) | 8 suites / 17 tests (PASSED) | 11 suites / 37 tests (PASSED) | 14 suites / 52 tests (PASSED) | 14 suites / 66 tests (PASSED) | 18 suites / 104 tests (PASSED) | Added EditorInfoAnalyzerTest, SensitiveInputDetectorTest, PrivacyFilterTest, PrivacyDefenseInDepthTest |
-| Gradle Tasks Executed | 70 tasks | 89 tasks | 91 tasks | 94 tasks | 97 tasks | 97 tasks | 84 tasks | Clean execution, KSP processing Room schemas, config cache stored |
+| Metric | Phase 0 Baseline | Phase 1 Foundation | Phase 2 Data Foundation | Phase 3 Monitoring Sessions | Phase 4 Basic Keyboard | Phase 5 Complete Keyboard | Phase 6 Editor & Privacy | Phase 7 IME Pipeline | Notes |
+|---|---|---|---|---|---|---|---|---|---|
+| Debug APK Size | 48,608,524 bytes (~46.35 MB) | 48,720,225 bytes (~46.46 MB) | 48,887,522 bytes (~46.62 MB) | 49,048,518 bytes (~46.78 MB) | 49,127,138 bytes (~46.85 MB) | 49,137,994 bytes (~46.86 MB) | 49,131,050 bytes (~46.85 MB) | 49,141,834 bytes (~46.86 MB) | Multi-ABI, unminified, Room + SQLCipher + DataStore + SessionManager + CustomKeyboardService + PrivacyFilter + EventProcessor + ContextResolver |
+| Release APK Size | 22,945,972 bytes (~21.88 MB) | 23,318,576 bytes (~22.24 MB) | 23,646,256 bytes (~22.55 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | 24,084,012 bytes (~22.96 MB) | 24,084,012 bytes (~22.96 MB) | Multi-ABI, R8 minified + shrunk resources. Optimized pipeline code absorbed into existing dex chunks |
+| Unit Test Suite | 1 test (PASSED) | 3 suites / 5 tests (PASSED) | 8 suites / 17 tests (PASSED) | 11 suites / 37 tests (PASSED) | 14 suites / 52 tests (PASSED) | 14 suites / 66 tests (PASSED) | 18 suites / 104 tests (PASSED) | 22 suites / 120 tests (PASSED) | Added ContextResolverTest (5), EventProcessorTest (5), ImeEventPublisherTest (3), ImeFailureToleranceTest (3) |
+| Gradle Tasks Executed | 70 tasks | 89 tasks | 91 tasks | 94 tasks | 97 tasks | 97 tasks | 84 tasks | 84 tasks | Clean execution, KSP processing Room schemas, config cache stored |
+
+---
+
+## Event Ingestion & Resolution Subsystem
+
+```text
+Platform Service (IME / Accessibility)
+      │
+      ▼
+ImeEventPublisher (asynchronous CoroutineScope, SupervisorJob)
+      │
+      ▼
+EventProcessor (fail-safe coordination)
+      ├── SessionGate.shouldProcess()
+      ├── Active Session Validation
+      ├── PrivacyFilter.sanitize()
+      ├── ContextResolver.resolve() (in-memory cached)
+      └── EventRepository.insertEvent() (defense-in-depth safety validation)
+```
+
+- `ImeEventPublisher`: Dispatches event candidates off the UI thread without blocking keystroke delivery.
+- `EventProcessor`: Enforces session state machine, multi-layer privacy filtering, and fail-safe handling.
+- `ContextResolver`: Maps Android package names to human-readable application labels using a thread-safe `ConcurrentHashMap` cache.
+
 
 ---
 

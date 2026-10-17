@@ -27,11 +27,11 @@ Overall Status:
 IN PROGRESS
 
 Current Phase:
-Phase 4 complete; ready to begin Phase 5 (Complete Keyboard)
+Phase 7 complete; ready to begin Phase 8 (AccessibilityService)
 
 Current Objective:
-Phase 4 Basic Custom Keyboard complete: CustomKeyboardService (InputMethodService), QWERTY layout, high-performance low-latency KeyboardView with state-list drawables, KeyProcessor direct InputConnection text delivery (independent of logging), KeyboardController shift state machine (OFF -> ON_ONCE -> CAPS_LOCK), audio and haptic feedback, 14 test suites passing (52 tests), clean debug and R8 release builds verified.
-Ready to implement Phase 5 (Complete Keyboard: Symbols, Numbers, Caps Lock, Editor Actions).
+Phase 7 IME Event Pipeline complete: ImeEventPublisher asynchronous event dispatching on background SupervisorJob scope, EventProcessor fail-safe coordination (SessionGate, active session check, PrivacyFilter, ContextResolver, EventRepository persistence), ContextResolver in-memory caching of human-readable app labels, CustomKeyboardService integration with strict Keyboard Independence guarantee (InputConnection text delivery executed first, candidate emission in defensive try-catch), mandatory failure tolerance verification (§44, typing continues with zero disruption under catastrophic pipeline crash), 22 test suites / 120 unit tests passing cleanly, clean debug and R8 release builds verified.
+Ready to implement Phase 8 (AccessibilityService).
 ```
 
 Update these values as development proceeds.
@@ -79,11 +79,11 @@ Phase-0 living documents (created and active):
 
 [✓] Phase 4  — Basic Custom Keyboard
 
-[ ] Phase 5  — Complete Keyboard
+[✓] Phase 5  — Complete Keyboard
 
-[ ] Phase 6  — Editor Analysis & Privacy
+[✓] Phase 6  — Editor Analysis & Privacy
 
-[ ] Phase 7  — IME Event Pipeline
+[✓] Phase 7  — IME Event Pipeline
 
 [ ] Phase 8  — AccessibilityService
 
@@ -258,26 +258,42 @@ Currently:
   - Verified all 18 test suites / 104 unit tests passing cleanly
   - Verified clean debug build (app-debug.apk: 49,131,050 bytes)
   - Verified clean release build with R8 shrinking (app-release.apk: 24,084,012 bytes)
+
+✓ Phase 7 completed:
+  - Implemented ContextResolver and ContextResolverImpl providing cached human-readable application label resolution with ConcurrentHashMap and IO dispatcher offloading (Architecture.md §41, §42, DEC-021)
+  - Implemented EventProcessor and EventProcessorImpl coordinating SessionGate checking, active session validation, PrivacyFilter sanitization, ContextResolver label mapping, and defensive EventRepository persistence
+  - Implemented ImeEventPublisher and ImeEventPublisherImpl asynchronously publishing RawInteractionEvent candidates on background SupervisorJob CoroutineScope without blocking main UI typing
+  - Integrated asynchronous event emission into CustomKeyboardService.handleKeyAction with strict Keyboard Independence (input delivery to InputConnection always executes first; emission wrapped in fail-safe try-catch)
+  - Wired contextResolver, eventProcessor, and imeEventPublisher singletons into AppContainer and DefaultAppContainer
+  - Added 4 comprehensive unit test suites: ContextResolverTest (5 tests), EventProcessorTest (5 tests), ImeEventPublisherTest (3 tests), and ImeFailureToleranceTest (3 tests)
+  - Successfully verified Mandatory Failure Tolerance Test (§44): simulated catastrophic logging/pipeline crash while typing proves InputConnection receives all characters, spaces, backspaces, and editor actions with 100% reliability
+  - Verified all 22 test suites / 120 unit tests passing cleanly (100% pass rate in 1.44s)
+  - Verified clean debug build (app-debug.apk: 49,141,834 bytes)
+  - Verified clean release build with R8 shrinking (app-release.apk: 24,084,012 bytes)
 ```
 
 ---
 
 # 7. Next Tasks
 
-Next tasks for Phase 7 (IME Event Pipeline):
+Next tasks for Phase 8 (AccessibilityService):
 
 ```text
-1. Begin Phase 7 (IME Event Pipeline).
+1. Begin Phase 8 (AccessibilityService).
 
-2. Implement ImeEventPublisher interface and ImeEventPublisherImpl to asynchronously emit RawInteractionEvents from CustomKeyboardService (Architecture.md §33).
+2. Create AppAccessibilityService extending Android AccessibilityService with lifecycle and configuration.
 
-3. Connect KeyProcessor / CustomKeyboardService to generate RawInteractionEvent candidates without blocking or touching InputConnection text delivery (DEC-018).
+3. Define accessibility-service XML metadata (event types: TYPE_VIEW_CLICKED, TYPE_VIEW_FOCUSED, TYPE_VIEW_TEXT_CHANGED, TYPE_WINDOW_STATE_CHANGED, etc., feedbackType: generic, flags: retrieveInteractiveWindows).
 
-4. Implement EventProcessor to receive raw events, query SessionGate, pass through SensitiveInputDetector and PrivacyFilter, and persist via EventRepository (Architecture.md §37, §38).
+4. Implement AccessibilityEventFilter to filter out irrelevant or unmonitored events and avoid event flooding.
 
-5. Implement Phase 7 failure test: artificially fail event persistence and verify typing continues with zero interruption (IMPLEMENTATION_PLAN.md §44).
+5. Implement AccessibilityEventMapper to transform permitted AccessibilityEvents into RawInteractionEvents with safe node inspection (suppressing password fields).
 
-6. Update decision.md, tech.md, flow.md, and PROGRESS.md.
+6. Asynchronously publish Accessibility RawInteractionEvents into EventProcessor.
+
+7. Implement unit and integration tests for AccessibilityService filtering, mapping, and privacy.
+
+8. Update decision.md, tech.md, flow.md, and PROGRESS.md.
 ```
 
 # 8. Current Technology

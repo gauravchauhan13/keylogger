@@ -30,6 +30,13 @@ import com.example.inputmonitor.domain.privacy.SensitiveInputDetectorImpl
 import com.example.inputmonitor.platform.ime.analysis.EditorInfoAnalyzer
 import com.example.inputmonitor.platform.ime.analysis.EditorInfoAnalyzerImpl
 
+import com.example.inputmonitor.domain.context.ContextResolver
+import com.example.inputmonitor.domain.processor.EventProcessor
+import com.example.inputmonitor.domain.processor.EventProcessorImpl
+import com.example.inputmonitor.platform.ime.ImeEventPublisher
+import com.example.inputmonitor.platform.ime.ImeEventPublisherImpl
+import com.example.inputmonitor.platform.packages.ContextResolverImpl
+
 /**
  * Application-level dependency container implementing manual DI (DEC-004).
  *
@@ -48,6 +55,9 @@ interface AppContainer {
     val editorInfoAnalyzer: EditorInfoAnalyzer
     val sensitiveInputDetector: SensitiveInputDetector
     val privacyFilter: PrivacyFilter
+    val contextResolver: ContextResolver
+    val eventProcessor: EventProcessor
+    val imeEventPublisher: ImeEventPublisher
     val startMonitoringSessionUseCase: StartMonitoringSessionUseCase
     val pauseMonitoringSessionUseCase: PauseMonitoringSessionUseCase
     val resumeMonitoringSessionUseCase: ResumeMonitoringSessionUseCase
@@ -102,6 +112,25 @@ class DefaultAppContainer(
 
     override val privacyFilter: PrivacyFilter by lazy {
         PrivacyFilterImpl()
+    }
+
+    override val contextResolver: ContextResolver by lazy {
+        ContextResolverImpl(context, dispatchers)
+    }
+
+    override val eventProcessor: EventProcessor by lazy {
+        EventProcessorImpl(
+            sessionGate = sessionGate,
+            sessionManager = sessionManager,
+            privacyFilter = privacyFilter,
+            contextResolver = contextResolver,
+            eventRepository = eventRepository,
+            dispatchers = dispatchers
+        )
+    }
+
+    override val imeEventPublisher: ImeEventPublisher by lazy {
+        ImeEventPublisherImpl(eventProcessor, dispatchers)
     }
 
     override val startMonitoringSessionUseCase: StartMonitoringSessionUseCase by lazy {

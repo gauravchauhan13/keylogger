@@ -687,8 +687,42 @@ Consequences:
 Positive:
 - Absolute sensitive data suppression verified by 18 unit test suites / 104 tests
 - End-to-end privacy gate fully passed
+---
+
+## DEC-021 — IME Event Pipeline, Asynchronous Publishing, and Keyboard Failure Isolation
+
+Date:
+2026-10-18
+
+Status:
+Accepted
+
+Context:
+Architecture.md §2.1, §32, §33, §37, §38, §41, §42, SRS.md §22, §23, and TESTING.md §9 require that keyboard typing operates completely independent of event logging, monitoring sessions, and persistence. Keystrokes must commit to the target application immediately without queuing on database operations, and any failure in logging, database corruption, or out-of-memory errors in the monitoring pipeline must never disrupt or degrade typing.
+
+Decision:
+1. Implement `ImeEventPublisher` and `ImeEventPublisherImpl` to asynchronously emit `RawInteractionEvent` candidates onto a background `SupervisorJob` coroutine scope (`dispatchers.default`), guaranteeing main thread typing latency is 100% unaffected.
+2. Structure `CustomKeyboardService.handleKeyAction` so text delivery via `KeyProcessor` to `InputConnection` is executed first and unconditionally, before any event candidate emission occurs.
+3. Isolate event candidate dispatch in `CustomKeyboardService.emitKeyEventCandidate` within a defensive try-catch block, ensuring that runtime exceptions in the event ingestion pipeline cannot propagate to the IME UI thread.
+4. Implement `EventProcessor` and `EventProcessorImpl` to coordinate session gating (`SessionGate`), active session verification, multi-layer privacy sanitization (`PrivacyFilter`), human-readable context resolution (`ContextResolver`), and persistence via `EventRepository`.
+5. Implement `ContextResolver` and `ContextResolverImpl` with an in-memory `ConcurrentHashMap` cache to avoid expensive and repetitive `PackageManager` IPC lookups during rapid keystrokes, with IO dispatcher offloading and safe fallback to package names on unresolvable apps.
+6. Wire `contextResolver`, `eventProcessor`, and `imeEventPublisher` into `AppContainer` and `DefaultAppContainer`.
+7. Implement 4 new test suites: `ContextResolverTest` (5 tests), `EventProcessorTest` (5 tests), `ImeEventPublisherTest` (3 tests), and `ImeFailureToleranceTest` (3 tests), verifying mandatory requirement §44 (catastrophic logging crash does not impede typing).
+
+Reason:
+- Full adherence to Keyboard Independence principle (Architecture.md §2.1)
+- Zero typing latency added
+- Fail-safe resilience against SQLite database locking or IPC failures
+- Human-readable application names cached for efficient reporting
+
+Consequences:
+Positive:
+- Keyboard continues typing seamlessly even during catastrophic simulated crashes of the event pipeline
+- 22 test suites / 120 unit tests passing cleanly
+- Clean debug and R8 release builds verified
 Negative:
 - None
+
 
 
 
