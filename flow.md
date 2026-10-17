@@ -278,20 +278,34 @@ AccessibilityEventFilter (enabled category?)
 
 ---
 
-# 9. IME Event Flow
+# 9. IME Keyboard Input Flow
 
 ```text
-Key press
-   ↓
-KeyProcessor
+User touches key on KeyboardView
    │
-   ├──→ InputConnection.commitText() / sendKeyEvent()
+   ├── Audio feedback (AudioManager.playSoundEffect)
+   ├── Haptic feedback (HapticFeedbackConstants.KEYBOARD_TAP)
    │
-   └──→ Create RawInteractionEvent
-              ↓
-         EventProcessor
-              ↓
-         (same pipeline as §6)
+   ▼
+CustomKeyboardService.handleKeyAction(action)
+   │
+   ├── KeyAction.Shift ────────► KeyboardController.toggleShift() ─► refresh KeyboardView
+   ├── KeyAction.SwitchIme ────► InputMethodManager.showInputMethodPicker()
+   ├── KeyAction.SwitchLayout ─► KeyboardController.switchLayout() ─► refresh KeyboardView
+   │
+   └── KeyAction.Character / Space / Backspace / Enter
+         │
+         ▼
+       KeyProcessor.processKey(action, currentInputConnection, editorInfo)
+         │
+         ├── Character ──► InputConnection.commitText(char, 1)
+         │                   │
+         │                   ▼ (if Shift was ON_ONCE, reset to OFF)
+         │                 KeyboardController.onCharacterTyped()
+         │
+         ├── Space ──────► InputConnection.commitText(" ", 1)
+         ├── Backspace ──► InputConnection.deleteSurroundingText(1, 0)
+         └── Enter ──────► performEditorAction(actionId) or commitText("\n", 1)
 ```
 
 ---
@@ -419,5 +433,6 @@ Phase 0: Project initialization (COMPLETE)
 Phase 1: Android foundation, navigation, edge-to-edge Compose UI (COMPLETE)
 Phase 2: Data foundation, Room encrypted database, KeyStore AES-GCM, Repositories, defense-in-depth safety validation (COMPLETE)
 Phase 3: Monitoring sessions, SessionManager state machine (INACTIVE <-> ACTIVE <-> PAUSED -> STOPPED), SessionGate event blocking, lifecycle use cases, Dashboard UI controls & badges (COMPLETE)
-Phase 4: Custom keyboard foundation (NEXT)
+Phase 4: Custom keyboard foundation, CustomKeyboardService, QWERTY layout, InputConnection text delivery, shift state machine, audio/haptic feedback (COMPLETE)
+Phase 5: Complete keyboard layouts (Symbols, Numbers, Caps lock, Editor actions) (NEXT)
 ```
