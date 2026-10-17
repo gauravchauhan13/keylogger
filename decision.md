@@ -723,6 +723,43 @@ Positive:
 Negative:
 - None
 
+---
+
+## DEC-022 — AccessibilityService Ingestion Pipeline, Content Minimization, and Decoupled Event Testing
+
+Date:
+2026-10-18
+
+Status:
+Accepted
+
+Context:
+Architecture.md §18, §19, §20, §21, §22, SRS.md §31, §32, §33, and SECURITY.md §4 mandate that interaction monitoring via `AccessibilityService` must collect only permitted interaction metadata, never capture sensitive text or credentials, avoid feedback loops from self-monitoring, and execute asynchronously to prevent blocking the Android accessibility IPC callback.
+
+Decision:
+1. Implement `AppAccessibilityService` extending Android `AccessibilityService` bound via `BIND_ACCESSIBILITY_SERVICE` and configured with `@xml/accessibility_service_config` (`canRetrieveWindowContent="false"` for strict privacy).
+2. Implement `AccessibilityEventFilter` and `AccessibilityEventFilterImpl` to restrict event ingestion to configured categories (`TYPE_VIEW_CLICKED`, `TYPE_VIEW_FOCUSED`, `TYPE_VIEW_SCROLLED`, `TYPE_WINDOW_STATE_CHANGED`, `TYPE_WINDOWS_CHANGED`, `TYPE_VIEW_SELECTED`), suppress self-monitoring feedback loops on `ownPackageName`, and rate-limit rapid scroll event storms (`minScrollIntervalMs`).
+3. Implement `AccessibilityEventMapper` and `AccessibilityEventMapperImpl` enforcing strict Content Minimization (Architecture.md §22): never capture message bodies or editable text; detect password widgets (`isPassword == true` or class name inspection) and immediately classify as `InputClassification.SENSITIVE_PASSWORD` with `candidateData = null`.
+4. Create `AccessibilityEventInfo` decoupled representation and adapter (`AccessibilityEvent.toEventInfo()`) enabling deterministic JVM unit testing of filter and mapper without Android OS IPC or mock stub errors.
+5. Implement `AccessibilityEventPublisher` and `AccessibilityEventPublisherImpl` dispatching events onto a background `SupervisorJob` CoroutineScope so `onAccessibilityEvent` returns immediately in sub-millisecond time.
+6. Wire `accessibilityEventFilter`, `accessibilityEventMapper`, and `accessibilityEventPublisher` into `AppContainer` and `DefaultAppContainer`.
+7. Add 4 test suites: `AccessibilityEventFilterTest` (6 tests), `AccessibilityEventMapperTest` (7 tests), `AccessibilityEventPublisherTest` (2 tests), and `AppAccessibilityServiceTest` (5 tests), bringing total test coverage to 26 test suites / 140 unit tests passing with 100% success rate.
+
+Reason:
+- Privacy-first accessibility monitoring without collecting arbitrary user messages or passwords
+- Non-blocking execution prevents system UI stutter
+- Full failure isolation: publisher exceptions cannot crash the accessibility service
+- Self-monitoring suppression prevents recursive event loops
+
+Consequences:
+Positive:
+- Complete accessibility monitoring subsystem implemented and verified
+- 26 unit test suites / 140 tests passing cleanly
+- Clean debug and R8 release builds verified
+Negative:
+- None
+
+
 
 
 

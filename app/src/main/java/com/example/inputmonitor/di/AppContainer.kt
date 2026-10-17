@@ -36,6 +36,12 @@ import com.example.inputmonitor.domain.processor.EventProcessorImpl
 import com.example.inputmonitor.platform.ime.ImeEventPublisher
 import com.example.inputmonitor.platform.ime.ImeEventPublisherImpl
 import com.example.inputmonitor.platform.packages.ContextResolverImpl
+import com.example.inputmonitor.platform.accessibility.AccessibilityEventFilter
+import com.example.inputmonitor.platform.accessibility.AccessibilityEventFilterImpl
+import com.example.inputmonitor.platform.accessibility.AccessibilityEventMapper
+import com.example.inputmonitor.platform.accessibility.AccessibilityEventMapperImpl
+import com.example.inputmonitor.platform.accessibility.AccessibilityEventPublisher
+import com.example.inputmonitor.platform.accessibility.AccessibilityEventPublisherImpl
 
 /**
  * Application-level dependency container implementing manual DI (DEC-004).
@@ -58,6 +64,9 @@ interface AppContainer {
     val contextResolver: ContextResolver
     val eventProcessor: EventProcessor
     val imeEventPublisher: ImeEventPublisher
+    val accessibilityEventFilter: AccessibilityEventFilter
+    val accessibilityEventMapper: AccessibilityEventMapper
+    val accessibilityEventPublisher: AccessibilityEventPublisher
     val startMonitoringSessionUseCase: StartMonitoringSessionUseCase
     val pauseMonitoringSessionUseCase: PauseMonitoringSessionUseCase
     val resumeMonitoringSessionUseCase: ResumeMonitoringSessionUseCase
@@ -131,6 +140,18 @@ class DefaultAppContainer(
 
     override val imeEventPublisher: ImeEventPublisher by lazy {
         ImeEventPublisherImpl(eventProcessor, dispatchers)
+    }
+
+    override val accessibilityEventFilter: AccessibilityEventFilter by lazy {
+        AccessibilityEventFilterImpl(context.packageName)
+    }
+
+    override val accessibilityEventMapper: AccessibilityEventMapper by lazy {
+        AccessibilityEventMapperImpl()
+    }
+
+    override val accessibilityEventPublisher: AccessibilityEventPublisher by lazy {
+        AccessibilityEventPublisherImpl(eventProcessor, dispatchers)
     }
 
     override val startMonitoringSessionUseCase: StartMonitoringSessionUseCase by lazy {
