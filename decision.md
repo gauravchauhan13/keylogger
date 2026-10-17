@@ -759,6 +759,46 @@ Positive:
 Negative:
 - None
 
+---
+
+## DEC-023 — Unified Event Processing and Concurrent Ingestion Integration
+
+Date:
+2026-10-18
+
+Status:
+Accepted
+
+Context:
+IMPLEMENTATION_PLAN.md §47 (Phase 9), Architecture.md §37, §38, and SECURITY.md §4 require connecting both IME (`CustomKeyboardService`) and Accessibility (`AppAccessibilityService`) event ingestion pipelines into the central `EventProcessor` and `EventRepository`. All persistent interaction events must uniformly share:
+1. `SessionGate` checking active monitoring state
+2. `PrivacyFilter` sanitization and zero sensitive data persistence
+3. `ContextResolver` human-readable application label caching
+4. `EventRepository` encrypted Room database storage with defense-in-depth safety validation
+
+Decision:
+1. Validate unified end-to-end event pipeline integration connecting both `ImeEventPublisher` and `AccessibilityEventPublisher` through `EventProcessor` into persistent storage.
+2. Verify concurrent event interleaving scenarios: user focuses an input view (`VIEW_FOCUSED` from Accessibility), types text (`TEXT_COMMITTED` from IME), and clicks actions (`VIEW_CLICKED` from Accessibility), verifying correct chronological ordering, application context attribution ("Notes Application"), and session ID consistency in storage.
+3. Verify unified session state gating: transitioning `SessionState` across `ACTIVE`, `PAUSED`, and `STOPPED` uniformly gates both IME and Accessibility sources simultaneously (events from both sources dropped when paused or stopped; resumed immediately when active).
+4. Verify unified privacy invariant across both pipelines: sensitive inputs from either source (accessibility password widgets or IME password fields) result in `candidateData = null`, `eventType = SENSITIVE_INPUT_DETECTED`, and zero sensitive data persistent storage.
+5. Verify scroll storm rate limiting and concurrent typing: rapid accessibility scroll storms are coalesced/rate-limited while concurrent keyboard typing continues with zero dropped keystrokes.
+6. Verify failure tolerance: simulated repository disk exceptions are caught gracefully by `EventProcessor`, preventing any crash or disruption in either the IME or Accessibility services.
+7. Implement `UnifiedEventProcessingIntegrationTest` with 6 comprehensive end-to-end integration tests, bringing total test coverage to 27 test suites / 146 unit tests passing with 100% success rate.
+
+Reason:
+- Fulfills Phase 9 of the implementation plan
+- Guarantees seamless inter-operation between platform services and domain processing
+- Proves privacy invariants and session gating hold true across multiple simultaneous event streams
+
+Consequences:
+Positive:
+- Unified event processing fully verified and integrated
+- 27 test suites / 146 tests passing with 100% pass rate
+- Clean debug (49,141,834 bytes) and R8 release (24,084,012 bytes) builds verified
+Negative:
+- None
+
+
 
 
 

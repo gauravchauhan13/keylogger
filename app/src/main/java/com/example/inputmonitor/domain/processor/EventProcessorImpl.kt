@@ -4,7 +4,6 @@ import com.example.inputmonitor.core.DispatcherProvider
 import com.example.inputmonitor.domain.context.ContextResolver
 import com.example.inputmonitor.domain.model.InteractionEvent
 import com.example.inputmonitor.domain.model.RawInteractionEvent
-import com.example.inputmonitor.domain.model.SessionState
 import com.example.inputmonitor.domain.privacy.PrivacyFilter
 import com.example.inputmonitor.domain.repository.EventRepository
 import com.example.inputmonitor.domain.session.SessionGate
@@ -50,7 +49,9 @@ class EventProcessorImpl(
                 // 5. Serialize metadata safely if present
                 val metadataString = if (sanitized.metadata.isNotEmpty()) {
                     sanitized.metadata.entries.joinToString(separator = ",", prefix = "{", postfix = "}") {
-                        "\"${it.key}\":\"${it.value.replace("\"", "\\\"")}\""
+                        val key = it.key.replace("\\", "\\\\").replace("\"", "\\\"")
+                        val value = it.value.replace("\\", "\\\\").replace("\"", "\\\"")
+                        "\"$key\":\"$value\""
                     }
                 } else null
 

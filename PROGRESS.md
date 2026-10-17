@@ -282,26 +282,44 @@ Currently:
   - Verified all 26 test suites / 140 unit tests passing cleanly (100% pass rate in 1.63s)
   - Verified clean debug build (app-debug.apk: 49,141,834 bytes)
   - Verified clean release build with R8 shrinking (app-release.apk: 24,084,012 bytes)
+
+✓ Phase 9 completed:
+  - Verified end-to-end event pipeline integration connecting both IME and Accessibility event sources into central EventProcessor and Room database (Architecture.md §37, §38, DEC-023)
+  - Verified concurrent interaction interleaving: user interaction on UI (Accessibility VIEW_FOCUSED / VIEW_CLICKED) followed immediately by typing (IME TEXT_COMMITTED) correctly persists in chronological order with unified session ID and human-readable application context
+  - Verified unified session state gating across both pipelines: transitioning SessionState (ACTIVE <-> PAUSED / STOPPED) uniformly and simultaneously gates both IME and Accessibility sources
+  - Verified unified multi-pipeline privacy invariants: sensitive credentials detected via accessibility password widgets or IME password fields are strictly sanitized to candidateData = null, eventType = SENSITIVE_INPUT_DETECTED, and zero sensitive persistence in encrypted storage
+  - Verified self-monitoring loop suppression: events originating from own app package are safely filtered before reaching EventProcessor
+  - Verified scroll storm rate limiting: rapid bursts of accessibility scroll events are throttled without dropping concurrent keyboard typing
+  - Verified repository failure tolerance: database errors fail silently in background without crashing either the IME or Accessibility services
+  - Cleaned up redundant imports and hardened metadata JSON escaping in EventProcessorImpl
+  - Added UnifiedEventProcessingIntegrationTest (6 comprehensive integration tests)
+  - Verified all 27 test suites / 146 unit tests passing cleanly (100% pass rate in 1.62s)
+  - Verified clean debug build (app-debug.apk: 49,141,834 bytes)
+  - Verified clean release build with R8 shrinking (app-release.apk: 24,084,012 bytes)
 ```
 
 ---
 
 # 7. Next Tasks
 
-Next tasks for Phase 9 (Unified Event Processing & Integration):
+Next tasks for Phase 10 (First-Run Setup & Onboarding UI):
 
 ```text
-1. Begin Phase 9 (Unified Event Processing & Integration).
+1. Begin Phase 10 (First-Run Setup).
 
-2. Verify end-to-end event pipeline integration connecting both IME and Accessibility event sources into central EventProcessor and Room database.
+2. Implement Welcome screen and application disclosure dialogs (SRS.md §16).
 
-3. Verify concurrent event handling: user taps view (Accessibility VIEW_CLICKED / VIEW_FOCUSED) followed immediately by typing (IME TEXT_COMMITTED).
+3. Implement PermissionCoordinator to guide the user through permissions.
 
-4. Verify session state transitions uniformly gate both IME and Accessibility sources (INACTIVE / PAUSED / STOPPED drop events from both sources).
+4. Implement AccessibilityService enablement flow with deep-links to Android Accessibility Settings.
 
-5. Implement end-to-end integration tests verifying both sources write into encrypted Room database during active sessions with zero sensitive data persistence.
+5. Implement Custom Keyboard enablement and selection flows via InputMethodManager intents.
 
-6. Update decision.md, tech.md, flow.md, and PROGRESS.md.
+6. Implement Configuration Verification checking all permissions and services before entering Dashboard.
+
+7. Implement SetupStateManager tracking onboarding completion via DataStore.
+
+8. Update decision.md, tech.md, flow.md, and PROGRESS.md in required sequence.
 ```
 
 # 8. Current Technology
