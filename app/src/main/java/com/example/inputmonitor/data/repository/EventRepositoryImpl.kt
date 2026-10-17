@@ -1,0 +1,104 @@
+package com.example.inputmonitor.data.repository
+
+import com.example.inputmonitor.core.DispatcherProvider
+import com.example.inputmonitor.data.dao.InteractionEventDao
+import com.example.inputmonitor.data.entity.InteractionEventEntity
+import com.example.inputmonitor.data.mapper.toDomain
+import com.example.inputmonitor.data.mapper.toEntity
+import com.example.inputmonitor.domain.model.InteractionEvent
+import com.example.inputmonitor.domain.repository.EventRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
+
+/**
+ * Implementation of [EventRepository] with defensive security validation (Architecture.md §51).
+ *
+ * Defense in depth:
+ * Even if an upstream component erroneously passes raw text in a sensitive event,
+ * the repository enforces that sensitive classified events have null eventData before storage.
+ */
+class EventRepositoryImpl(
+    private val eventDao: InteractionEventDao,
+    private val dispatchers: DispatcherProvider
+) : EventRepository {
+
+    override suspend fun insertEvent(event: InteractionEvent): Long = withContext(dispatchers.io) {
+        val safeEntity = sanitizeEventForPersistence(event)
+        eventDao.insertEvent(safeEntity)
+    }
+
+    override suspend fun insertEvents(events: List<InteractionEvent>): List<Long> = withContext(dispatchers.io) {
+        val safeEntities = events.map { sanitizeEventForPersistence(it) }
+        eventDao.insertEvents(safeEntities)
+    }
+
+    override suspend fun getEventById(id: Long): InteractionEvent? = withContext(dispatchers.io) {
+        eventDao.getEventById(id)?.toDomain()
+    }
+
+    override fun observeEventsForSession(sessionId: String): Flow<List<InteractionEvent>> {
+        return eventDao.observeEventsForSession(sessionId)
+            .map { list -> list.map { it.toDomain() } }
+            .flowOn(dispatchers.io)
+    }
+
+    override suspend fun getEventsForSession(sessionId: String): List<InteractionEvent> = withContext(dispatchers.io) {
+        eventDao.getEventsForSession(sessionId).map { it.toDomain() }
+    }
+
+    override suspend fun getEventsForSessionPaged(
+        sessionId: String,
+        limit: Int,
+        offset: Int
+    ): List<InteractionEvent> = withContext(dispatchers.io) {
+        eventDao.getEventsForSessionPaged(sessionId, limit, offset).map { it.toDomain() }
+    }
+
+    override suspend fun getEventsFiltered(
+        sessionId: String,
+        packageFilter: String?,
+        eventTypeFilter: String?,
+        startTime: Long?,
+        endTime: Long?
+    ): List<InteractionEvent> = withContext(dispatchers.io) {
+        eventDao.getEventsFiltered(
+            sessionId = sessionId,
+            packageFilter = packageFilter,
+            eventTypeFilter = eventTypeFilter,
+            startTime = startTime,
+            endTime = endTime
+        ).map { it.toDomain() }
+    }
+
+    override suspend fun getEventCountForSession(sessionId: String): Int = withContext(dispatchers.io) {
+        eventDao.getEventCountForSession(sessionId)
+    }
+
+    override fun observeEventCountForSession(sessionId: String): Flow<Int> {
+        return eventDao.observeEventCountForSession(sessionId)
+            .flowOn(dispatchers.io)
+    }
+
+    override suspend fun deleteEventsForSession(sessionId: String): Boolean = withContext(dispatchers.io) {
+        eventDao.deleteEventsForSession(sessionId) >= 0
+    }
+
+    override suspend fun deleteAllEvents(): Boolean = withContext(dispatchers.io) {
+        eventDao.deleteAllEvents() >= 0
+    }
+
+    /**
+     * Defense-in-depth safety validation (SECURITY.md §4, Architecture.md §51).
+     * Enforces that sensitive input content NEVER reaches Room storage.
+     */
+    private fun sanitizeEventForPersistence(event: InteractionEvent): InteractionEventEntity {
+        val safeEvent = if (event.inputClassification.isSensitive && event.eventData != null) {
+            event.copy(eventData = null)
+        } else {
+            event
+        }
+        return safeEvent.toEntity()
+    }
+}

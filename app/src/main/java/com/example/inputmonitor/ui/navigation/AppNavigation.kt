@@ -1,6 +1,8 @@
 package com.example.inputmonitor.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -46,7 +48,30 @@ fun AppNavigation(
         }
 
         composable(Screen.Dashboard.route) {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val container = (context.applicationContext as com.example.inputmonitor.MonitoringApplication).container
+
+            val dashboardViewModel: com.example.inputmonitor.ui.dashboard.DashboardViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                factory = com.example.inputmonitor.ui.dashboard.DashboardViewModel.provideFactory(
+                    startUseCase = container.startMonitoringSessionUseCase,
+                    pauseUseCase = container.pauseMonitoringSessionUseCase,
+                    resumeUseCase = container.resumeMonitoringSessionUseCase,
+                    stopUseCase = container.stopMonitoringSessionUseCase,
+                    observeActiveUseCase = container.observeActiveSessionUseCase,
+                    observeStateUseCase = container.observeSessionStateUseCase
+                )
+            )
+
+            val sessionState by dashboardViewModel.sessionState.collectAsState()
+            val currentSession by dashboardViewModel.currentSession.collectAsState()
+
             DashboardScreen(
+                sessionState = sessionState,
+                currentSession = currentSession,
+                onStartSession = { name, notes -> dashboardViewModel.startSession(name, notes) },
+                onPauseSession = { dashboardViewModel.pauseSession() },
+                onResumeSession = { dashboardViewModel.resumeSession() },
+                onStopSession = { dashboardViewModel.stopSession() },
                 onNavigateToEvents = {
                     navController.navigate(Screen.Events.route)
                 },

@@ -496,4 +496,92 @@ Positive:
 Negative:
 - None
 
+---
+
+## DEC-015 — Enforce repository-level sensitive input suppression
+
+Date:
+2026-10-17
+
+Status:
+Accepted
+
+Context:
+SECURITY.md §4 and Architecture.md §51 mandate defense in depth for sensitive data. Relying solely on upstream IME or UI filter logic to redact passwords, PINs, and authentication secrets risks credential leakage if a regression occurs in higher layers.
+
+Decision:
+`EventRepositoryImpl` and `EventMapper` independently validate every `InteractionEvent` prior to Room insertion. If `inputClassification.isSensitive` is true, `eventData` is unconditionally set to `null` before entity conversion and persistence.
+
+Reason:
+- Architectural enforcement of zero persistent credential storage
+- Defends against upstream classifier or pipeline bugs
+- Verifiable with pure unit tests (`RepositorySafetyValidationTest`)
+
+Consequences:
+Positive:
+- Guarantees passwords/PINs/OTPs cannot be persisted in SQLite
+- Independent validation layer decoupled from UI/IME
+Negative:
+- None
+
+---
+
+## DEC-016 — Migrate to modern Zetetic SQLCipher package namespace
+
+Date:
+2026-10-17
+
+Status:
+Accepted
+
+Context:
+In SQLCipher Android 4.6.1 (`net.zetetic:sqlcipher-android`), Zetetic reorganized classes into the modern namespace `net.zetetic.database.sqlcipher.SupportOpenHelperFactory` (deprecating legacy `net.sqlcipher.database.*`).
+
+Decision:
+Use `net.zetetic.database.sqlcipher.SupportOpenHelperFactory` for Room encrypted database initialization, and configure ProGuard keep rules for both `net.zetetic.**` and `net.sqlcipher.**`.
+
+Reason:
+- Aligns with modern SQLCipher 4.6.x API
+- Enables clean compilation and linking with AGP 8.7.3 and R8 minification
+
+Consequences:
+Positive:
+- Reliable compile and runtime behavior with modern SQLCipher
+Negative:
+- None
+
+---
+
+## DEC-017 — Session State Machine and Session Gate Architecture
+
+Date:
+2026-10-17
+
+Status:
+Accepted
+
+Context:
+Architecture.md §43 and §44 require that interaction event recording is strictly governed by monitoring sessions. If recording state is scattered across platform services (IME, Accessibility) or untracked in memory, events may be recorded when the user intends the app to be idle or paused, or sessions may be lost across application process recreations.
+
+Decision:
+1. Implement `SessionManager` as a thread-safe state machine (`INACTIVE` -> `ACTIVE` <-> `PAUSED` -> `STOPPED`) managing in-memory `StateFlow<SessionState>` and `StateFlow<MonitoringSession?>`.
+2. Persist active session IDs in Jetpack Preferences DataStore and sessions in Room database. On application restart, `MonitoringApplication` invokes `restoreSessionIfActive()` to recover session state if active/paused.
+3. Implement `SessionGate` (`canProcessEvents()`, `shouldProcess(RawInteractionEvent)`) checking `SessionState.ACTIVE`. When `INACTIVE`, `PAUSED`, or `STOPPED`, incoming raw interaction events are immediately dropped before privacy analysis or database writes.
+4. Expose clean domain use cases (`StartMonitoringSessionUseCase`, `PauseMonitoringSessionUseCase`, `ResumeMonitoringSessionUseCase`, `StopMonitoringSessionUseCase`, `GetActiveSessionUseCase`, `ObserveActiveSessionUseCase`, `ObserveSessionStateUseCase`) wired through `AppContainer`.
+
+Reason:
+- Single source of truth for whether event recording is permitted
+- Clean separation between recording lifecycle and platform service callbacks
+- Instantaneous gating via memory StateFlow without disk/query latency on every key press
+- Safe process restart recovery
+
+Consequences:
+Positive:
+- Unbreakable barrier preventing recording when session is inactive, paused, or stopped
+- 100% testable via pure JUnit unit tests without Android instrumentation
+Negative:
+- All event ingestion pipelines must consult `SessionGate` before scheduling work
+
+
+
 

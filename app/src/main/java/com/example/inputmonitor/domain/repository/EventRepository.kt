@@ -1,0 +1,27 @@
+package com.example.inputmonitor.domain.repository
+
+import com.example.inputmonitor.domain.model.InteractionEvent
+import kotlinx.coroutines.flow.Flow
+
+/**
+ * Repository interface for interaction event persistence and retrieval (Architecture.md §50).
+ */
+interface EventRepository {
+    suspend fun insertEvent(event: InteractionEvent): Long
+    suspend fun insertEvents(events: List<InteractionEvent>): List<Long>
+    suspend fun getEventById(id: Long): InteractionEvent?
+    fun observeEventsForSession(sessionId: String): Flow<List<InteractionEvent>>
+    suspend fun getEventsForSession(sessionId: String): List<InteractionEvent>
+    suspend fun getEventsForSessionPaged(sessionId: String, limit: Int, offset: Int): List<InteractionEvent>
+    suspend fun getEventsFiltered(
+        sessionId: String,
+        packageFilter: String? = null,
+        eventTypeFilter: String? = null,
+        startTime: Long? = null,
+        endTime: Long? = null
+    ): List<InteractionEvent>
+    suspend fun getEventCountForSession(sessionId: String): Int
+    fun observeEventCountForSession(sessionId: String): Flow<Int>
+    suspend fun deleteEventsForSession(sessionId: String): Boolean
+    suspend fun deleteAllEvents(): Boolean
+}

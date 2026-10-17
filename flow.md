@@ -178,24 +178,78 @@ KeyProcessor
 
 ---
 
-# 7. Monitoring Session Flow
+# 7. Monitoring Session Flow & State Machine
 
 ```text
-NONE
+               ┌────────────────────────────────────────────────────────┐
+               │                        INACTIVE                        │
+               └───────────────────────────┬────────────────────────────┘
+                                           │
+                                  startSession(name, notes)
+                                           │
+                                           ▼
+               ┌────────────────────────────────────────────────────────┐
+               │                         ACTIVE                         │
+               │   • PreferencesRepository.setActiveSessionId(id)       │
+               │   • SessionGate.canProcessEvents() == true             │
+               │   • UI badge: ● ACTIVE                                 │
+               └───────────────┬────────────────────────▲───────────────┘
+                               │                        │
+                  pauseSession()                        resumeSession()
+                               │                        │
+                               ▼                        │
+               ┌────────────────────────────────────────┴───────────────┐
+               │                         PAUSED                         │
+               │   • SessionGate.canProcessEvents() == false (DROP)     │
+               │   • UI badge: ⏸ PAUSED                                 │
+               └───────────────┬────────────────────────────────────────┘
+                               │
+                          stopSession()
+                               │
+                               ▼
+               ┌────────────────────────────────────────────────────────┐
+               │                        STOPPED                         │
+               │   • endTime recorded in Room database                  │
+               │   • PreferencesRepository.setActiveSessionId(null)     │
+               │   • SessionGate.canProcessEvents() == false (DROP)     │
+               │   • UI badge: ■ STOPPED                                │
+               └────────────────────────────────────────────────────────┘
+
+Process Restart Recovery Flow:
+MonitoringApplication.onCreate()
    ↓
-User starts session → ACTIVE
+SessionManager.restoreSessionIfActive()
    ↓
-Events are processed and persisted
-   ↓
-User pauses → PAUSED
-   ↓
-Events not persisted while paused
-   ↓
-User resumes → ACTIVE
-   ↓
-User stops → STOPPED
-   ↓
-Session closed, no new events attach
+PreferencesRepository.activeSessionId?
+   ├── NULL ──► State remains INACTIVE
+   └── ID   ──► Query SessionRepository.getSessionById(ID)
+                  ├── State != STOPPED ──► Restore ACTIVE / PAUSED state
+                  └── State == STOPPED ──► Clear preference, state STOPPED
+```
+
+## 7.1 Session Gate Flow
+
+```text
+Platform Service (IME / Accessibility)
+             │
+             ▼
+    RawInteractionEvent
+             │
+             ▼
+        SessionGate
+             │
+   canProcessEvents()?
+             │
+     ┌───────┴───────┐
+     │               │
+    YES              NO
+(Session ACTIVE)  (INACTIVE / PAUSED / STOPPED)
+     │               │
+     ▼               ▼
+Privacy Pipeline  DROP EVENT
+     │            (Zero processing,
+     ▼             zero persistence)
+Encrypted DB
 ```
 
 ---
@@ -281,15 +335,19 @@ Classification = SENSITIVE implies:
 ```text
 Repository receives validated event
    ↓
-Map domain model → Room entity
+Repository Safety Validation (enforce eventData = NULL if isSensitive)
    ↓
-SQLCipher encrypts via Room SupportSQLiteOpenHelper
+Map domain model → Room entity (sanitizes sensitive data)
    ↓
-Write to encrypted .db file
+DatabaseKeyManager retrieves AES-GCM protected passphrase from Android Keystore
    ↓
-Android Keystore provides decryption key on read
+SQLCipher SupportOpenHelperFactory opens encrypted SQLite database
    ↓
-Room DAOs provide Flow<List<Entity>> for UI
+Write to encrypted .db file (input_monitor_encrypted.db)
+   ↓
+Room DAOs provide reactive Flow<List<Entity>> to Repositories
+   ↓
+Repositories map to domain models for UI/ViewModel consumption
 ```
 
 ---
@@ -357,7 +415,9 @@ Privacy filter failure:
 # Current Implementation State
 
 ```text
-Phase 0: Project initialization
-No runtime flows implemented yet.
-All flows above are planned architecture.
+Phase 0: Project initialization (COMPLETE)
+Phase 1: Android foundation, navigation, edge-to-edge Compose UI (COMPLETE)
+Phase 2: Data foundation, Room encrypted database, KeyStore AES-GCM, Repositories, defense-in-depth safety validation (COMPLETE)
+Phase 3: Monitoring sessions, SessionManager state machine (INACTIVE <-> ACTIVE <-> PAUSED -> STOPPED), SessionGate event blocking, lifecycle use cases, Dashboard UI controls & badges (COMPLETE)
+Phase 4: Custom keyboard foundation (NEXT)
 ```

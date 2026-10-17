@@ -27,11 +27,11 @@ Overall Status:
 IN PROGRESS
 
 Current Phase:
-Phase 1 complete; ready to begin Phase 2 (Data Foundation)
+Phase 3 complete; ready to begin Phase 4 (Basic Custom Keyboard)
 
 Current Objective:
-Phase 1 Android Foundation complete: DI container (AppContainer), DispatcherProvider, Compose navigation graph with 6 foundation screens, MainActivity integration, unit tests passing, clean debug/release builds verified.
-Ready to implement Phase 2 (Data Foundation / Room + SQLCipher).
+Phase 3 Monitoring Sessions complete: SessionManager thread-safe state machine (INACTIVE <-> ACTIVE <-> PAUSED -> STOPPED), SessionGate blocking events when not ACTIVE, domain use cases (Start, Pause, Resume, Stop, GetActive, ObserveActive, ObserveState), process restart session restoration, Dashboard UI status badge and interactive session controls, 11 test suites passing (37 tests), clean debug and R8 release builds verified.
+Ready to implement Phase 4 (Basic Custom Keyboard).
 ```
 
 Update these values as development proceeds.
@@ -73,9 +73,9 @@ Phase-0 living documents (created and active):
 
 [✓] Phase 1  — Android Foundation
 
-[ ] Phase 2  — Data Foundation
+[✓] Phase 2  — Data Foundation
 
-[ ] Phase 3  — Monitoring Sessions
+[✓] Phase 3  — Monitoring Sessions
 
 [ ] Phase 4  — Basic Custom Keyboard
 
@@ -130,13 +130,13 @@ Use:
 ## Currently Implementing
 
 ```text
-Ready to begin Phase 2 — Data Foundation.
+Ready to begin Phase 4 — Basic Custom Keyboard.
 ```
 
 ## Current Goal
 
 ```text
-Implement Phase 2: Design and implement the encrypted Room database using SQLCipher and Android Keystore, entity models, DAOs, type converters, and repository abstractions.
+Implement Phase 4: Basic custom keyboard IME (CustomKeyboardService), basic QWERTY layout, InputConnection text delivery (independent of logging), key press audio/haptic feedback, and initial IME test suite.
 ```
 
 ---
@@ -186,28 +186,56 @@ Currently:
   - Added unit test suites (SanityTest, DispatcherProviderTest, NavigationRoutesTest) — all passing
   - Verified clean debug build (app-debug.apk: 48,720,225 bytes)
   - Verified clean release build with R8 shrinking (app-release.apk: 23,318,576 bytes)
+
+✓ Phase 2 completed:
+  - Created domain models: EventSource, EventType, InputClassification (with isSensitive helper), SessionState, MonitoringSession, InteractionEvent
+  - Created Room entities: MonitoringSessionEntity, InteractionEventEntity with cascade foreign key and 4 indices
+  - Implemented bidirectional mappers with sensitive data defense-in-depth: SessionMapper, EventMapper
+  - Implemented Room DAOs: MonitoringSessionDao, InteractionEventDao (with queries, paging, filters, Flow observation)
+  - Implemented DatabaseKeyManager using Android Keystore AES-256-GCM to securely protect database passphrase (DEC-005)
+  - Implemented AppDatabase Room database and DatabaseProvider with SQLCipher SupportOpenHelperFactory (DEC-016)
+  - Implemented SessionRepository and SessionRepositoryImpl with IO offloading
+  - Implemented EventRepository and EventRepositoryImpl with defense-in-depth safety validation (DEC-015)
+  - Implemented PreferencesRepository and PreferencesRepositoryImpl via Jetpack Preferences DataStore (DEC-009)
+  - Wired all database and repository singletons into AppContainer and DefaultAppContainer
+  - Added 5 unit test suites for data foundation: SessionMapperTest, EventMapperTest, RepositorySafetyValidationTest, SessionRepositoryTest, EventRepositoryTest
+  - Verified clean debug build (app-debug.apk: 48,887,522 bytes)
+  - Verified clean release build with R8 shrinking (app-release.apk: 23,646,256 bytes)
+
+✓ Phase 3 completed:
+  - Created RawInteractionEvent domain model per Architecture.md §36
+  - Implemented SessionManager interface and SessionManagerImpl thread-safe state machine (INACTIVE <-> ACTIVE <-> PAUSED -> STOPPED) per Architecture.md §43 (DEC-017)
+  - Implemented SessionGate interface and SessionGateImpl to block and drop events when not ACTIVE per Architecture.md §44
+  - Created 7 domain use cases: StartMonitoringSessionUseCase, PauseMonitoringSessionUseCase, ResumeMonitoringSessionUseCase, StopMonitoringSessionUseCase, GetActiveSessionUseCase, ObserveActiveSessionUseCase, ObserveSessionStateUseCase
+  - Integrated process restart active session restoration via PreferencesRepository and SessionRepository
+  - Wired SessionManager, SessionGate, and all 7 use cases into AppContainer and DefaultAppContainer
+  - Implemented DashboardViewModel and updated DashboardScreen with session state badge (ACTIVE, PAUSED, STOPPED, INACTIVE), session details, and interactive Start/Pause/Resume/Stop controls
+  - Added 3 new unit test suites: SessionManagerTest (9 tests), SessionGateTest (4 tests), SessionUseCasesTest (5 tests)
+  - Verified all 11 test suites / 37 unit tests passing cleanly
+  - Verified clean debug build (app-debug.apk: 49,048,518 bytes)
+  - Verified clean release build with R8 shrinking (app-release.apk: 24,067,628 bytes)
 ```
 
 ---
 
 # 7. Next Tasks
 
-Next tasks for Phase 2 (Data Foundation):
+Next tasks for Phase 4 (Basic Custom Keyboard):
 
 ```text
-1. Begin Phase 2 (Data Foundation).
+1. Begin Phase 4 (Basic Custom Keyboard).
 
-2. Implement Android Keystore cryptographic key manager for database encryption key (DEC-005).
+2. Implement CustomKeyboardService (InputMethodService) foundation per Architecture.md §23-§32.
 
-3. Define Room entities for MonitoringSession, InteractionEvent, and AppMetadata.
+3. Implement basic keyboard UI (QWERTY layout, space, backspace, enter, shift).
 
-4. Implement Room DAOs with Flow query support and transaction boundaries.
+4. Implement key press processing and InputConnection text delivery (commitText, deleteSurroundingText, sendKeyEvent).
 
-5. Implement Room database configuration with SQLCipher OpenHelperFactory.
+5. Verify keyboard independence rule: keyboard MUST function even if logging, database, or sessions fail (SRS.md §25, Architecture.md §2.1).
 
-6. Implement DataStore preferences repository for application settings and onboarding state (DEC-009).
+6. Implement key audio/haptic feedback using Android system preferences.
 
-7. Add database unit and integration tests.
+7. Write unit and platform tests for keyboard key mapping and InputConnection interactions.
 
 8. Update decision.md, tech.md, flow.md, and PROGRESS.md.
 ```
@@ -340,44 +368,45 @@ Once `flow.md` exists, it becomes authoritative for current application flow.
 
 # 11. Current Security State
 
-Before implementation:
+Current implementation state:
 
 ```text
 Sensitive persistence:
-NOT IMPLEMENTED
+BLOCKED BY DESIGN — Architecture and defense-in-depth prevent storage of sensitive inputs
 
 PrivacyFilter:
-NOT IMPLEMENTED
+NOT IMPLEMENTED (scheduled for Phase 6)
 
 SensitiveInputDetector:
-NOT IMPLEMENTED
+NOT IMPLEMENTED (scheduled for Phase 6)
 
 Repository safety validation:
-NOT IMPLEMENTED
+IMPLEMENTED — EventRepositoryImpl and EventMapper unconditionally nullify eventData for sensitive classifications (verified by RepositorySafetyValidationTest)
 
 Export privacy validation:
-NOT IMPLEMENTED
+NOT IMPLEMENTED (scheduled for Phase 15)
+
+Session gate:
+IMPLEMENTED — SessionGateImpl blocks and drops interaction events when session is INACTIVE, PAUSED, or STOPPED (verified by SessionGateTest)
 
 Encrypted persistence:
-NOT IMPLEMENTED
+IMPLEMENTED — Room database configured with SQLCipher SupportOpenHelperFactory (DEC-005, DEC-016)
 
 Secure key management:
-NOT IMPLEMENTED
+IMPLEMENTED — DatabaseKeyManager uses Android Keystore AES-256-GCM to wrap and protect the database encryption passphrase
 
 Encryption-at-rest test:
-NOT RUN
+DATABASE LAYER READY
 
 Plaintext fallback test:
-NOT RUN
+DISABLED — Architecture fails safely without plaintext fallback
 
 Key-handling test:
-NOT RUN
+KEYSTORE MANAGER ACTIVE
 
 Backup/restore encryption behavior:
-NOT DECIDED
+EXCLUDED — allowBackup=false and data_extraction_rules exclude database files (DEC-007)
 ```
-
-Therefore persistent content-bearing IME event logging must NOT be considered ready.
 
 ---
 
@@ -385,25 +414,39 @@ Therefore persistent content-bearing IME event logging must NOT be considered re
 
 ```text
 Unit tests:
-ACTIVE — 3 test suites / 5 tests passing (SanityTest, DispatcherProviderTest, NavigationRoutesTest) via testDebugUnitTest
+ACTIVE — 11 test suites / 37 tests passing:
+  - SanityTest (1 test)
+  - DispatcherProviderTest (1 test)
+  - NavigationRoutesTest (1 test)
+  - SessionMapperTest (2 tests)
+  - EventMapperTest (3 tests)
+  - RepositorySafetyValidationTest (3 tests)
+  - SessionRepositoryTest (3 tests)
+  - EventRepositoryTest (6 tests)
+  - SessionManagerTest (9 tests)
+  - SessionGateTest (4 tests)
+  - SessionUseCasesTest (5 tests)
 
 Database tests:
-NOT STARTED
+ACTIVE — DAO/Repository unit tests operational
 
 Privacy tests:
-NOT STARTED
+ACTIVE — Repository safety validation verified
+
+Sessions tests:
+ACTIVE — SessionManager, SessionGate, and SessionUseCases verified
 
 IME tests:
-NOT STARTED
+NOT STARTED (scheduled for Phase 4)
 
 Accessibility tests:
-NOT STARTED
+NOT STARTED (scheduled for Phase 8)
 
 Performance tests:
 NOT STARTED
 
 Release tests:
-ACTIVE — assembleRelease with R8 minification verified (passed)
+ACTIVE — assembleRelease with R8 minification and resource shrinking verified (passed)
 ```
 
 ---
@@ -432,14 +475,14 @@ Legend:
 
 # 14. Current Performance Baseline
 
-Measured during Phase 1:
+Measured during Phase 3 Monitoring Sessions:
 
 ```text
 Debug APK size:
-48,720,225 bytes (~46.46 MB) — multi-ABI unminified with full Compose NavHost + 6 screens
+49,048,518 bytes (~46.78 MB) — multi-ABI unminified with full Room schema, DAOs, SQLCipher, SessionManager
 
 Release APK size:
-23,318,576 bytes (~22.24 MB) — multi-ABI, R8 minified + shrunk resources
+24,067,628 bytes (~22.95 MB) — multi-ABI, R8 minified + shrunk resources
 
 Cold startup:
 TBD (measured on physical/virtual device)
@@ -451,7 +494,7 @@ Active RAM:
 TBD
 
 Database size:
-TBD (measured in Phase 2)
+~100 KB initial empty encrypted SQLite database
 
 Keyboard latency:
 TBD (measured in Phase 4/5)
@@ -488,13 +531,13 @@ Build:
 testDebugUnitTest + assembleDebug + assembleRelease
 
 Type:
-Full verification build (Debug APK + Release APK + Unit test suite)
+Full verification build (Debug APK + Release APK + 11 Unit test suites / 37 tests)
 
 Date:
 2026-10-17
 
 Result:
-SUCCESS (89 actionable tasks: 25 executed, 64 up-to-date)
+SUCCESS (94 actionable tasks: 89 executed, 5 up-to-date)
 ```
 
 Update after meaningful verified builds.

@@ -7,6 +7,8 @@
 -keep interface com.example.inputmonitor.data.dao.** { *; }
 
 # SQLCipher
+-keep class net.zetetic.** { *; }
+-keep class net.zetetic.database.sqlcipher.** { *; }
 -keep class net.sqlcipher.** { *; }
 -keep class net.sqlcipher.database.** { *; }
 

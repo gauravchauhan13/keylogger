@@ -166,12 +166,12 @@ Espresso Core           — Instrumentation (3.6.1)
 
 ## Baseline Build Metrics
 
-| Metric | Phase 0 Baseline | Phase 1 Foundation | Notes |
-|---|---|---|---|
-| Debug APK Size | 48,608,524 bytes (~46.35 MB) | 48,720,225 bytes (~46.46 MB) | Multi-ABI, unminified, full Compose + Navigation graph |
-| Release APK Size | 22,945,972 bytes (~21.88 MB) | 23,318,576 bytes (~22.24 MB) | Multi-ABI, R8 minified + shrunk resources. Delta is ~370 KB for Navigation and 6 screens |
-| Unit Test Suite | 1 test (PASSED) | 3 suites / 5 tests (PASSED) | SanityTest, DispatcherProviderTest, NavigationRoutesTest |
-| Gradle Tasks Executed | 70 tasks | 89 tasks | Clean execution, configuration cache stored |
+| Metric | Phase 0 Baseline | Phase 1 Foundation | Phase 2 Data Foundation | Phase 3 Monitoring Sessions | Notes |
+|---|---|---|---|---|---|
+| Debug APK Size | 48,608,524 bytes (~46.35 MB) | 48,720,225 bytes (~46.46 MB) | 48,887,522 bytes (~46.62 MB) | 49,048,518 bytes (~46.78 MB) | Multi-ABI, unminified, Room + SQLCipher + DataStore + SessionManager |
+| Release APK Size | 22,945,972 bytes (~21.88 MB) | 23,318,576 bytes (~22.24 MB) | 23,646,256 bytes (~22.55 MB) | 24,067,628 bytes (~22.95 MB) | Multi-ABI, R8 minified + shrunk resources. Delta ~421 KB for full Session Management |
+| Unit Test Suite | 1 test (PASSED) | 3 suites / 5 tests (PASSED) | 8 suites / 17 tests (PASSED) | 11 suites / 37 tests (PASSED) | Sanity, Dispatchers, Routes, Mappers, Repositories, Safety, SessionManager, Gate, UseCases |
+| Gradle Tasks Executed | 70 tasks | 89 tasks | 91 tasks | 94 tasks | Clean execution, KSP processing Room schemas, config cache stored |
 
 ---
 
@@ -191,7 +191,7 @@ CSV (user-initiated local export)
 | Navigation Compose | 2.8.5 | Screen navigation | Yes | ~200KB |
 | Lifecycle Runtime / ViewModel Compose | 2.8.7 | ViewModel integration | Yes | ~100KB |
 | Room Runtime & KTX | 2.6.1 | Database | Yes | ~500KB |
-| SQLCipher Android | 4.6.1@aar | Database encryption | Yes | ~3-5MB per ABI |
+| SQLCipher Android | 4.6.1 | Database encryption | Yes | ~3-5MB per ABI |
 | SQLite KTX | 2.4.0 | Database support | Yes | ~20KB |
 | Preferences DataStore | 1.1.1 | App preferences | Yes | ~50KB |
 | KotlinX Coroutines Android | 1.9.0 | Async/reactive | Yes | ~200KB |

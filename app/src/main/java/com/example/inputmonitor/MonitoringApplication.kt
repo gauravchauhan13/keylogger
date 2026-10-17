@@ -1,6 +1,8 @@
 package com.example.inputmonitor
 
 import android.app.Application
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 /**
  * Application entry point.
@@ -21,5 +23,8 @@ class MonitoringApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         container = com.example.inputmonitor.di.DefaultAppContainer(applicationContext)
+        kotlinx.coroutines.CoroutineScope(container.dispatchers.io).launch {
+            container.sessionManager.restoreSessionIfActive()
+        }
     }
 }
