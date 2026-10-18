@@ -104,6 +104,67 @@ class EventRepositoryTest {
             return flowOf(events.maxByOrNull { it.timestamp })
         }
 
+        override fun observeEventsFilteredPaged(
+            sessionId: String?,
+            packageFilter: String?,
+            eventTypeFilter: String?,
+            sourceFilter: String?,
+            classificationFilter: String?,
+            startTime: Long?,
+            endTime: Long?,
+            searchQuery: String?,
+            limit: Int,
+            offset: Int
+        ): Flow<List<InteractionEventEntity>> {
+            val filtered = events.filter {
+                (sessionId == null || it.sessionId == sessionId) &&
+                (packageFilter == null || it.packageName == packageFilter) &&
+                (eventTypeFilter == null || it.eventType == eventTypeFilter) &&
+                (sourceFilter == null || it.source == sourceFilter) &&
+                (classificationFilter == null || it.inputClassification == classificationFilter) &&
+                (startTime == null || it.timestamp >= startTime) &&
+                (endTime == null || it.timestamp <= endTime) &&
+                (searchQuery == null || (
+                    (it.packageName != null && it.packageName.contains(searchQuery, ignoreCase = true)) ||
+                    (it.applicationName != null && it.applicationName.contains(searchQuery, ignoreCase = true)) ||
+                    (it.eventData != null && it.eventData.contains(searchQuery, ignoreCase = true))
+                ))
+            }.sortedByDescending { it.timestamp }
+            val paged = filtered.drop(offset).take(limit)
+            return flowOf(paged)
+        }
+
+        override fun observeFilteredCount(
+            sessionId: String?,
+            packageFilter: String?,
+            eventTypeFilter: String?,
+            sourceFilter: String?,
+            classificationFilter: String?,
+            startTime: Long?,
+            endTime: Long?,
+            searchQuery: String?
+        ): Flow<Int> {
+            val filtered = events.filter {
+                (sessionId == null || it.sessionId == sessionId) &&
+                (packageFilter == null || it.packageName == packageFilter) &&
+                (eventTypeFilter == null || it.eventType == eventTypeFilter) &&
+                (sourceFilter == null || it.source == sourceFilter) &&
+                (classificationFilter == null || it.inputClassification == classificationFilter) &&
+                (startTime == null || it.timestamp >= startTime) &&
+                (endTime == null || it.timestamp <= endTime) &&
+                (searchQuery == null || (
+                    (it.packageName != null && it.packageName.contains(searchQuery, ignoreCase = true)) ||
+                    (it.applicationName != null && it.applicationName.contains(searchQuery, ignoreCase = true)) ||
+                    (it.eventData != null && it.eventData.contains(searchQuery, ignoreCase = true))
+                ))
+            }
+            return flowOf(filtered.size)
+        }
+
+        override fun observeDistinctPackageNames(): Flow<List<String>> {
+            return flowOf(events.mapNotNull { it.packageName }.distinct().sorted())
+        }
+
         override suspend fun deleteEventsForSession(sessionId: String): Int {
             val countBefore = events.size
             events.removeAll { it.sessionId == sessionId }

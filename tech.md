@@ -187,12 +187,12 @@ Espresso Core           — Instrumentation (3.6.1)
 
 ## Baseline Build Metrics
 
-| Metric | Phase 0 Baseline | Phase 1 Foundation | Phase 2 Data Foundation | Phase 3 Monitoring Sessions | Phase 4 Basic Keyboard | Phase 5 Complete Keyboard | Phase 6 Editor & Privacy | Phase 7 IME Pipeline | Phase 8 Accessibility | Phase 9 Integration | Phase 10 First-Run Setup | Phase 11 Dashboard | Notes |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Debug APK Size | 48,608,524 bytes (~46.35 MB) | 48,720,225 bytes (~46.46 MB) | 48,887,522 bytes (~46.62 MB) | 49,048,518 bytes (~46.78 MB) | 49,127,138 bytes (~46.85 MB) | 49,137,994 bytes (~46.86 MB) | 49,131,050 bytes (~46.85 MB) | 49,141,834 bytes (~46.86 MB) | 49,141,834 bytes (~46.86 MB) | 49,141,834 bytes (~46.86 MB) | 49,302,225 bytes (~47.02 MB) | 49,413,901 bytes (~47.12 MB) | Multi-ABI, unminified, Room + SQLCipher + DataStore + SessionManager + CustomKeyboardService + PrivacyFilter + EventProcessor + ContextResolver + AppAccessibilityService + SetupStateManager + DashboardScreen |
-| Release APK Size | 22,945,972 bytes (~21.88 MB) | 23,318,576 bytes (~22.24 MB) | 23,646,256 bytes (~22.55 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | 24,084,012 bytes (~22.96 MB) | 24,084,012 bytes (~22.96 MB) | 24,084,012 bytes (~22.96 MB) | 24,084,012 bytes (~22.96 MB) | 24,149,548 bytes (~23.03 MB) | 24,165,932 bytes (~23.05 MB) | Multi-ABI, R8 minified + shrunk resources. DashboardViewModel + DashboardScreen + Live Event Aggregation + Material 3 metrics components |
-| Unit Test Suite | 1 test (PASSED) | 3 suites / 5 tests (PASSED) | 8 suites / 17 tests (PASSED) | 11 suites / 37 tests (PASSED) | 14 suites / 52 tests (PASSED) | 14 suites / 66 tests (PASSED) | 18 suites / 104 tests (PASSED) | 22 suites / 120 tests (PASSED) | 26 suites / 140 tests (PASSED) | 27 suites / 146 tests (PASSED) | 32 suites / 178 tests (PASSED) | 35 suites / 187 tests (PASSED) | Added DashboardUiStateTest (2), DashboardViewModelTest (6), DashboardFlowIntegrationTest (1). 100% pass rate in ~1.0s |
-| Gradle Tasks Executed | 70 tasks | 89 tasks | 91 tasks | 94 tasks | 97 tasks | 97 tasks | 84 tasks | 84 tasks | 84 tasks | 84 tasks | 84 tasks | 84 tasks | Clean execution, KSP processing Room schemas, config cache stored |
+| Metric | Phase 0 Baseline | Phase 1 Foundation | Phase 2 Data Foundation | Phase 3 Monitoring Sessions | Phase 4 Basic Keyboard | Phase 5 Complete Keyboard | Phase 6 Editor & Privacy | Phase 7 IME Pipeline | Phase 8 Accessibility | Phase 9 Integration | Phase 10 First-Run Setup | Phase 11 Dashboard | Phase 12 Event Timeline | Notes |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Debug APK Size | 48,608,524 bytes (~46.35 MB) | 48,720,225 bytes (~46.46 MB) | 48,887,522 bytes (~46.62 MB) | 49,048,518 bytes (~46.78 MB) | 49,127,138 bytes (~46.85 MB) | 49,137,994 bytes (~46.86 MB) | 49,131,050 bytes (~46.85 MB) | 49,141,834 bytes (~46.86 MB) | 49,141,834 bytes (~46.86 MB) | 49,141,834 bytes (~46.86 MB) | 49,302,225 bytes (~47.02 MB) | 49,413,901 bytes (~47.12 MB) | 49,652,761 bytes (~47.35 MB) | Multi-ABI, unminified, Room + SQLCipher + DataStore + SessionManager + CustomKeyboardService + PrivacyFilter + EventProcessor + ContextResolver + AppAccessibilityService + SetupStateManager + DashboardScreen + EventsScreen |
+| Release APK Size | 22,945,972 bytes (~21.88 MB) | 23,318,576 bytes (~22.24 MB) | 23,646,256 bytes (~22.55 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | 24,084,012 bytes (~22.96 MB) | 24,084,012 bytes (~22.96 MB) | 24,084,012 bytes (~22.96 MB) | 24,084,012 bytes (~22.96 MB) | 24,149,548 bytes (~23.03 MB) | 24,165,932 bytes (~23.05 MB) | 24,297,004 bytes (~23.17 MB) | Multi-ABI, R8 minified + shrunk resources. TimelineViewModel + EventsScreen + Bounded Paging + Multi-Dimensional Filtering components |
+| Unit Test Suite | 1 test (PASSED) | 3 suites / 5 tests (PASSED) | 8 suites / 17 tests (PASSED) | 11 suites / 37 tests (PASSED) | 14 suites / 52 tests (PASSED) | 14 suites / 66 tests (PASSED) | 18 suites / 104 tests (PASSED) | 22 suites / 120 tests (PASSED) | 26 suites / 140 tests (PASSED) | 27 suites / 146 tests (PASSED) | 32 suites / 178 tests (PASSED) | 35 suites / 187 tests (PASSED) | 38 suites / 198 tests (PASSED) | Added TimelineUiStateTest (3), TimelineViewModelTest (7), TimelineFlowIntegrationTest (1). 100% pass rate in ~1.0s |
+| Gradle Tasks Executed | 70 tasks | 89 tasks | 91 tasks | 94 tasks | 97 tasks | 97 tasks | 84 tasks | 84 tasks | 84 tasks | 84 tasks | 84 tasks | 84 tasks | 84 tasks | Clean execution, KSP processing Room schemas, config cache stored |
 
 ---
 
@@ -291,6 +291,45 @@ EventCounts   Latest Event         SetupState         SessionState + ActiveSessi
 - `DashboardUiState`: Reactive unified state providing live system capability indicators, foreground app context, and session status.
 - `DashboardViewModel`: Central presentation coordinator ensuring real-time state delivery via `SharingStarted.Eagerly`.
 - `DashboardScreen`: Material 3 edge-to-edge UI with responsive status badges and interactive session management.
+
+---
+
+## Event Timeline & Filtering Subsystem
+
+```text
+Room DB (SQLite Engine)        SessionRepository       ObserveActiveSessionUseCase
+       │                               │                            │
+       │ (LIMIT 50 OFFSET 50*page)     │ (observeAllSessions)       │
+       ▼                               ▼                            ▼
+List<InteractionEvent>       List<MonitoringSession>       ActiveSession
+       │                               │                            │
+       └───────────────────────────────┼────────────────────────────┘
+                                       ▼
+                              TimelineViewModel
+                          (FlatMap & Combine with Eagerly)
+                                       │
+                                       ▼
+                               TimelineUiState
+                                       │
+                                       ▼
+                                 EventsScreen
+   ┌─────────────────────────────────────────────────────────────┐
+   │ • Search Bar (Immediate SQLite LIKE query execution)        │
+   │ • Event Type Filter Chips: Typing, Click, Focus, Scroll     │
+   │ • Multi-Dimensional Filter Dialog: Source, Package, Session │
+   │ • Pagination Strip: Record range & boundary-safe navigation │
+   │ • Chronological Timeline: Reverse-chronological event cards │
+   │ • Event Detail Dialog: Full inspection & privacy notice     │
+   └─────────────────────────────────────────────────────────────┘
+```
+
+- `EventFilterCriteria`: Immutable domain model capturing search query, package, event type, source, classification, session ID, and timestamp constraints.
+- `InteractionEventDao.observeEventsFilteredPaged`: Paginated SQLite query with `LIMIT :limit OFFSET :offset` enforcing bounded heap memory consumption regardless of database size.
+- `InteractionEventDao.observeFilteredCount`: Companion query computing total matching items for pagination calculation.
+- `InteractionEventDao.observeDistinctPackageNames`: Real-time query populating package filter controls with observed packages.
+- `TimelineUiState`: Comprehensive presentation model providing active filter state, page bounds, and event detail modal data.
+- `TimelineViewModel`: Reactive coordinator ensuring immediate, bounded state delivery via `SharingStarted.Eagerly`.
+- `EventsScreen`: Feature-complete Material 3 interface with search, filter chips, pagination, empty state handling, and detailed security disclosures.
 
 ---
 

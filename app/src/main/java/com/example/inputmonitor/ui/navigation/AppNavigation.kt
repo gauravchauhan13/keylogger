@@ -112,10 +112,30 @@ fun AppNavigation(
         }
 
         composable(Screen.Events.route) {
+            val timelineViewModel: com.example.inputmonitor.ui.events.TimelineViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                factory = com.example.inputmonitor.ui.events.TimelineViewModel.provideFactory(
+                    eventRepository = container.eventRepository,
+                    sessionRepository = container.sessionRepository,
+                    observeActiveSessionUseCase = container.observeActiveSessionUseCase
+                )
+            )
+
+            val timelineUiState by timelineViewModel.uiState.collectAsState()
+
             EventsScreen(
-                onNavigateBack = {
-                    navController.popBackStack()
-                }
+                uiState = timelineUiState,
+                onNavigateBack = { navController.popBackStack() },
+                onSearchQueryChange = { timelineViewModel.setSearchQuery(it) },
+                onEventTypeFilterChange = { timelineViewModel.setEventTypeFilter(it) },
+                onSourceFilterChange = { timelineViewModel.setSourceFilter(it) },
+                onPackageFilterChange = { timelineViewModel.setPackageFilter(it) },
+                onSessionFilterChange = { timelineViewModel.setSessionFilter(it) },
+                onClassificationFilterChange = { timelineViewModel.setClassificationFilter(it) },
+                onClearFilters = { timelineViewModel.clearFilters() },
+                onNextPage = { timelineViewModel.nextPage() },
+                onPreviousPage = { timelineViewModel.previousPage() },
+                onSelectEvent = { timelineViewModel.selectEvent(it) },
+                onSetFilterDialogVisible = { timelineViewModel.setFilterDialogVisible(it) }
             )
         }
 

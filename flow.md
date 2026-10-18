@@ -481,6 +481,63 @@ UI State Emits: DashboardUiState
 
 ---
 
+# 12.1. Event Timeline & Filtering Flow
+
+```text
+EventsScreen Launched (Screen.Events)
+   ↓
+TimelineViewModel initializes StateFlow (SharingStarted.Eagerly)
+   ├── observeEventsPaged(filter, limit = 50, offset = page * 50)
+   ├── observeFilteredCount(filter)
+   ├── observeDistinctPackageNames()
+   ├── observeAllSessions()
+   └── observeActiveSession()
+   ↓
+TimelineUiState Emits
+   │
+   ├── [Top App Bar]
+   │     • Total matching events count
+   │     • Active filter badge indicator (⚙●)
+   │     • Instant "Reset Filters" action
+   │
+   ├── [Search Bar] (SRS.md §50)
+   │     • Text search matching application name, package, or event data
+   │     • Immediate reactive SQLite LIKE query execution
+   │     • Automatically resets pagination to Page 0
+   │
+   ├── [Event Type Filter Chips Row]
+   │     • All Types / ⌨ Typing / 👆 Clicks / 👁 Focus / ↕ Scrolls / 🪟 Windows / 🔒 Sensitive
+   │     • Single-tap filtering resets page to 0
+   │
+   ├── [Pagination Control Strip] (Architecture.md §56, AC-23)
+   │     • Record range indicator (e.g. "1–50 of 214")
+   │     • Page navigation buttons: [‹ Prev] [Page 1 of 5] [Next ›]
+   │     • Bounds-safe: disables buttons at page boundaries
+   │
+   ├── [Reverse-Chronological Event Stream] (Newest First)
+   │     • LazyColumn bounded to 50 items (zero heap exhaustion risk)
+   │     • Event Card:
+   │         - Glyph: ⌨ / 👆 / 👁 / ↕ / 🪟 / 🔒
+   │         - Header: App Name ("Notes Application") + Time (18:42:15.342)
+   │         - Subtitle: Package Name (com.example.notes)
+   │         - Pills: Event Type + Source (KEYBOARD / ACCESSIBILITY)
+   │         - Body: Text snippet if normal, or "🔒 Content not stored" if sensitive
+   │
+   ├── [Event Detail Dialog]
+   │     • Tapping any card opens comprehensive interaction metadata
+   │     • ID, Session ID, Timestamp, App, Package, Source, Type, Classification
+   │     • Sensitive field notice explaining zero credential persistence
+   │     • Formatted recorded data and metadata preview
+   │
+   └── [Multi-Dimensional Filter Dialog] (SRS.md §49, AC-24)
+         • Filter by Source: All / Keyboard / Accessibility
+         • Filter by Package: Distinct recorded application packages
+         • Filter by Session: All Sessions / Specific monitoring session
+         • Filter by Classification: All / Normal / Passwords
+```
+
+---
+
 # 13. Export Flow
 
 ```text

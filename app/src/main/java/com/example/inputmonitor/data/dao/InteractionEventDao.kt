@@ -71,6 +71,65 @@ interface InteractionEventDao {
     @Query("SELECT * FROM interaction_events ORDER BY timestamp DESC LIMIT 1")
     fun observeLatestEvent(): Flow<InteractionEventEntity?>
 
+    @Query("""
+        SELECT * FROM interaction_events 
+        WHERE (:sessionId IS NULL OR sessionId = :sessionId)
+          AND (:packageFilter IS NULL OR packageName = :packageFilter)
+          AND (:eventTypeFilter IS NULL OR eventType = :eventTypeFilter)
+          AND (:sourceFilter IS NULL OR source = :sourceFilter)
+          AND (:classificationFilter IS NULL OR inputClassification = :classificationFilter)
+          AND (:startTime IS NULL OR timestamp >= :startTime)
+          AND (:endTime IS NULL OR timestamp <= :endTime)
+          AND (:searchQuery IS NULL OR (
+              (packageName IS NOT NULL AND packageName LIKE '%' || :searchQuery || '%') OR 
+              (applicationName IS NOT NULL AND applicationName LIKE '%' || :searchQuery || '%') OR
+              (eventData IS NOT NULL AND eventData LIKE '%' || :searchQuery || '%')
+          ))
+        ORDER BY timestamp DESC
+        LIMIT :limit OFFSET :offset
+    """)
+    fun observeEventsFilteredPaged(
+        sessionId: String? = null,
+        packageFilter: String? = null,
+        eventTypeFilter: String? = null,
+        sourceFilter: String? = null,
+        classificationFilter: String? = null,
+        startTime: Long? = null,
+        endTime: Long? = null,
+        searchQuery: String? = null,
+        limit: Int = 50,
+        offset: Int = 0
+    ): Flow<List<InteractionEventEntity>>
+
+    @Query("""
+        SELECT COUNT(*) FROM interaction_events 
+        WHERE (:sessionId IS NULL OR sessionId = :sessionId)
+          AND (:packageFilter IS NULL OR packageName = :packageFilter)
+          AND (:eventTypeFilter IS NULL OR eventType = :eventTypeFilter)
+          AND (:sourceFilter IS NULL OR source = :sourceFilter)
+          AND (:classificationFilter IS NULL OR inputClassification = :classificationFilter)
+          AND (:startTime IS NULL OR timestamp >= :startTime)
+          AND (:endTime IS NULL OR timestamp <= :endTime)
+          AND (:searchQuery IS NULL OR (
+              (packageName IS NOT NULL AND packageName LIKE '%' || :searchQuery || '%') OR 
+              (applicationName IS NOT NULL AND applicationName LIKE '%' || :searchQuery || '%') OR
+              (eventData IS NOT NULL AND eventData LIKE '%' || :searchQuery || '%')
+          ))
+    """)
+    fun observeFilteredCount(
+        sessionId: String? = null,
+        packageFilter: String? = null,
+        eventTypeFilter: String? = null,
+        sourceFilter: String? = null,
+        classificationFilter: String? = null,
+        startTime: Long? = null,
+        endTime: Long? = null,
+        searchQuery: String? = null
+    ): Flow<Int>
+
+    @Query("SELECT DISTINCT packageName FROM interaction_events WHERE packageName IS NOT NULL ORDER BY packageName ASC")
+    fun observeDistinctPackageNames(): Flow<List<String>>
+
     @Query("DELETE FROM interaction_events WHERE sessionId = :sessionId")
     suspend fun deleteEventsForSession(sessionId: String): Int
 

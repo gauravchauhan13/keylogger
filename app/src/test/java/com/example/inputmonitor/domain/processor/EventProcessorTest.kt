@@ -104,6 +104,15 @@ class EventProcessorTest {
         override fun observeEventCountForSession(sessionId: String): Flow<Int> = flowOf(insertedEvents.size)
         override fun observeEventCounts(sessionId: String?): Flow<com.example.inputmonitor.domain.model.EventCounts> = flowOf(com.example.inputmonitor.domain.model.EventCounts(total = insertedEvents.size.toLong()))
         override fun observeLatestEvent(): Flow<InteractionEvent?> = flowOf(insertedEvents.lastOrNull())
+        override fun observeEventsPaged(
+            filter: com.example.inputmonitor.domain.model.EventFilterCriteria,
+            limit: Int,
+            offset: Int
+        ): Flow<List<InteractionEvent>> = flowOf(insertedEvents)
+        override fun observeFilteredCount(
+            filter: com.example.inputmonitor.domain.model.EventFilterCriteria
+        ): Flow<Int> = flowOf(insertedEvents.size)
+        override fun observeDistinctPackageNames(): Flow<List<String>> = flowOf(emptyList())
         override suspend fun deleteEventsForSession(sessionId: String): Boolean = true
         override suspend fun deleteAllEvents(): Boolean = true
     }

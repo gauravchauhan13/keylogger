@@ -24,6 +24,15 @@ interface EventRepository {
     fun observeEventCountForSession(sessionId: String): Flow<Int>
     fun observeEventCounts(sessionId: String? = null): Flow<com.example.inputmonitor.domain.model.EventCounts>
     fun observeLatestEvent(): Flow<InteractionEvent?>
+    fun observeEventsPaged(
+        filter: com.example.inputmonitor.domain.model.EventFilterCriteria,
+        limit: Int = 50,
+        offset: Int = 0
+    ): Flow<List<InteractionEvent>>
+    fun observeFilteredCount(
+        filter: com.example.inputmonitor.domain.model.EventFilterCriteria
+    ): Flow<Int>
+    fun observeDistinctPackageNames(): Flow<List<String>>
     suspend fun deleteEventsForSession(sessionId: String): Boolean
     suspend fun deleteAllEvents(): Boolean
 }

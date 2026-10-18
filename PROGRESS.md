@@ -27,11 +27,11 @@ Overall Status:
 IN PROGRESS
 
 Current Phase:
-Phase 11 complete; ready to begin Phase 12 (Event Timeline)
+Phase 12 complete; ready to begin Phase 13 (Search)
 
 Current Objective:
-Phase 11 Dashboard complete: Real-time system capability status (Keyboard, Accessibility, Credential protection, Database), non-blocking setup alert banner (SRS.md §74, AC-35), active monitoring session status with live state badge and session controls (Start dialog, Pause, Resume, Stop), foreground application context card, live aggregate event counters grid (Total, Keys, Clicks, Focus, Scrolls, Window changes) computed directly in SQLite without loading entities into RAM (Architecture.md §55, IMPLEMENTATION_PLAN.md §50, AC-04), 35 unit test suites / 187 tests passing (100% pass rate in ~1.0s), clean debug (49,413,901 bytes) and R8 release (24,165,932 bytes) builds verified.
-Ready to implement Phase 12 (Event Timeline).
+Phase 12 Event Timeline complete: Chronological reverse-ordered event viewer (`timestamp DESC`), bounded heap memory consumption via Room pagination (`LIMIT 50 OFFSET 50*page`), multi-dimensional filter engine (search query, event type chips, source filter, package filter, session filter, classification filter), Event Detail dialog with complete interaction metadata and explicit privacy notice for sensitive suppressed credentials, 38 unit test suites / 198 tests passing (100% pass rate in ~1.0s), clean debug (49,652,761 bytes) and R8 release (24,297,004 bytes) builds verified.
+Ready to implement Phase 13 (Search).
 ```
 
 Update these values as development proceeds.
@@ -322,29 +322,40 @@ Currently:
   - Added 3 new unit & integration test suites: DashboardUiStateTest (2 tests), DashboardViewModelTest (6 tests), DashboardFlowIntegrationTest (1 comprehensive integration test validating end-to-end multi-step flow)
   - Verified all 35 test suites / 187 unit tests passing cleanly (100% pass rate in ~1.0s)
   - Verified clean debug build (app-debug.apk: 49,413,901 bytes)
-  - Verified clean release build with R8 shrinking (app-release.apk: 24,165,932 bytes)
+✓ Phase 12 completed:
+  - Created EventFilterCriteria immutable domain model capturing multi-dimensional criteria: session, package, event type, source, classification, start/end timestamps, and search query with hasActiveFilters computation (Architecture.md §56, SRS.md §49, §50)
+  - Implemented observeEventsFilteredPaged(filter, limit, offset) in InteractionEventDao executing paginated queries with `LIMIT :limit OFFSET :offset` and `ORDER BY timestamp DESC`, enforcing strict 50-item RAM boundaries (AC-23)
+  - Implemented observeFilteredCount(filter) in InteractionEventDao calculating real-time count of matching events for dynamic pagination bounds
+  - Implemented observeDistinctPackageNames() in InteractionEventDao populating package filter dropdowns and chips with recorded application packages
+  - Updated EventRepository and EventRepositoryImpl to expose observeEventsPaged, observeFilteredCount, and observeDistinctPackageNames with I/O thread dispatching
+  - Created TimelineUiState representing paginated slice (page size 50), total count, filter state, distinct packages, monitoring sessions, active session, page indicators, and detail selection
+  - Implemented TimelineViewModel coordinating reactive state streams using SharingStarted.Eagerly, boundary-safe pagination actions (nextPage, previousPage, goToPage), search queries, filter resets, and session deletion
+  - Built full Material 3 EventsScreen with search bar, event type filter chips, pagination control strip, reverse-chronological event card stream with source glyphs and privacy warning pills, Event Detail dialog, and multi-dimensional filter dialog (AC-23, AC-24)
+  - Connected TimelineViewModel to Screen.Events in AppNavigation
+  - Added 3 new unit & integration test suites: TimelineUiStateTest (3 tests), TimelineViewModelTest (7 tests), TimelineFlowIntegrationTest (1 comprehensive integration test verifying end-to-end timeline observation, search, and filtering)
+  - Verified all 38 test suites / 198 unit tests passing cleanly (100% pass rate in ~1.0s)
+  - Verified clean debug build (app-debug.apk: 49,652,761 bytes)
+  - Verified clean release build with R8 shrinking (app-release.apk: 24,297,004 bytes)
 ```
 
 ---
 
 # 7. Next Tasks
 
-Next tasks for Phase 12 (Event Timeline):
+Next tasks for Phase 13 (Search):
 
 ```text
-1. Begin Phase 12 (Event Timeline).
+1. Begin Phase 13 (Search).
 
-2. Implement EventTimelineViewModel with paginated interaction events (using Paging 3 or Room LIMIT/OFFSET queries per Architecture.md §56).
+2. Review search query execution plans and database index utilization for interaction_events (packageName, eventType, timestamp, applicationName).
 
-3. Implement TimelineScreen with scrollable LazyColumn displaying chronological event cards with event type icon, source badge, application name, package name, and formatted timestamp.
+3. Implement dedicated search indexing or FTS (Full-Text Search) integration where appropriate for permitted application info without indexing sensitive fields.
 
-4. Implement Event Detail dialog or expander showing event metadata, classification (NORMAL_TEXT, SENSITIVE_PASSWORD), and non-sensitive data preview.
+4. Implement debounced search input handling in ViewModel to minimize database churn during rapid keystrokes.
 
-5. Implement filter controls: package filter dropdown/search, event type chips (All, Keystrokes, Clicks, Focus, Scrolls), and session filter.
+5. Implement search history and search suggestions for recorded application packages and sessions.
 
-6. Implement clear events / delete session confirmation actions.
-
-7. Update decision.md, tech.md, flow.md, and PROGRESS.md in required sequence.
+6. Update decision.md, tech.md, flow.md, and PROGRESS.md in required sequence.
 ```
 
 # 8. Current Technology
@@ -522,7 +533,7 @@ EXCLUDED — allowBackup=false and data_extraction_rules exclude database files 
 
 ```text
 Unit tests:
-ACTIVE — 35 test suites / 187 tests passing:
+ACTIVE — 38 test suites / 198 tests passing:
   - SanityTest (1 test)
   - DispatcherProviderTest (1 test)
   - NavigationRoutesTest (1 test)
@@ -558,6 +569,9 @@ ACTIVE — 35 test suites / 187 tests passing:
   - DashboardUiStateTest (2 tests)
   - DashboardViewModelTest (6 tests)
   - DashboardFlowIntegrationTest (1 test)
+  - TimelineUiStateTest (3 tests)
+  - TimelineViewModelTest (7 tests)
+  - TimelineFlowIntegrationTest (1 test)
 
 Database tests:
 ACTIVE — DAO/Repository unit tests operational
@@ -607,14 +621,14 @@ Legend:
 
 # 14. Current Performance Baseline
 
-Measured during Phase 11 Dashboard:
+Measured during Phase 12 Event Timeline:
 
 ```text
 Debug APK size:
-49,413,901 bytes (~47.12 MB) — multi-ABI unminified with Room, SQLCipher, SessionManager, CustomKeyboardService, complete multi-layout engine, PrivacyFilter, EventProcessor, ContextResolver, AppAccessibilityService, SetupStateManager, DashboardScreen
+49,652,761 bytes (~47.35 MB) — multi-ABI unminified with Room, SQLCipher, SessionManager, CustomKeyboardService, complete multi-layout engine, PrivacyFilter, EventProcessor, ContextResolver, AppAccessibilityService, SetupStateManager, DashboardScreen, EventsScreen
 
 Release APK size:
-24,165,932 bytes (~23.05 MB) — multi-ABI, R8 minified + shrunk resources
+24,297,004 bytes (~23.17 MB) — multi-ABI, R8 minified + shrunk resources
 
 Cold startup:
 TBD (measured on physical/virtual device)
@@ -663,10 +677,10 @@ Build:
 testDebugUnitTest + assembleDebug + assembleRelease
 
 Type:
-Full verification build (Debug APK + Release APK + 35 Unit test suites / 187 tests)
+Full verification build (Debug APK + Release APK + 38 Unit test suites / 198 tests)
 
 Date:
-2026-10-18
+2026-10-19
 
 Result:
 SUCCESS (84 actionable tasks: 12 executed, 72 up-to-date)
@@ -991,6 +1005,7 @@ DEC-022: AccessibilityService Ingestion Pipeline, Content Minimization, and Deco
 DEC-023: Unified Event Processing and Concurrent Ingestion Integration
 DEC-024: First-Run Setup State Machine, Decoupled System Status Checking, and Non-Blocking Partial Setup
 DEC-025: Dashboard Architecture, Aggregate Event Metrics, and Live Context Observation
+DEC-026: Event Timeline Architecture, Paged Room Observation, and Multi-Dimensional Filter Engine
 ```
 
 ---
@@ -1001,7 +1016,7 @@ At the end of every session there must be ONE clearly stated next action.
 
 Current:
 
-> Begin Phase 12 (Event Timeline): Implement TimelineViewModel with Paging 3 / room pagination for interaction event feed, build TimelineScreen with event item cards, search/package filter controls, event type chips, and timestamp formatting (Architecture.md §56, SRS.md §48, §50, §51).
+> Begin Phase 13 (Search): Implement efficient database-backed search for permitted application fields with debounce query support, FTS / indexed query optimizations, and dedicated search suggestions (Architecture.md §56, IMPLEMENTATION_PLAN.md §52, SRS.md §50).
 
 This prevents a future agent from guessing where to resume.
 

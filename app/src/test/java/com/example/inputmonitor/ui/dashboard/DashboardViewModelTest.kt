@@ -116,6 +116,15 @@ class DashboardViewModelTest {
         override fun observeEventCountForSession(sessionId: String): Flow<Int> = MutableStateFlow(0)
         override fun observeEventCounts(sessionId: String?): Flow<EventCounts> = countsFlow
         override fun observeLatestEvent(): Flow<InteractionEvent?> = latestEventFlow
+        override fun observeEventsPaged(
+            filter: com.example.inputmonitor.domain.model.EventFilterCriteria,
+            limit: Int,
+            offset: Int
+        ): Flow<List<InteractionEvent>> = MutableStateFlow(emptyList())
+        override fun observeFilteredCount(
+            filter: com.example.inputmonitor.domain.model.EventFilterCriteria
+        ): Flow<Int> = MutableStateFlow(0)
+        override fun observeDistinctPackageNames(): Flow<List<String>> = MutableStateFlow(emptyList())
         override suspend fun deleteEventsForSession(sessionId: String): Boolean = true
         override suspend fun deleteAllEvents(): Boolean = true
     }

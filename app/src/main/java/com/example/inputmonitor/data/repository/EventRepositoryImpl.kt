@@ -107,6 +107,47 @@ class EventRepositoryImpl(
             .flowOn(dispatchers.io)
     }
 
+    override fun observeEventsPaged(
+        filter: com.example.inputmonitor.domain.model.EventFilterCriteria,
+        limit: Int,
+        offset: Int
+    ): Flow<List<InteractionEvent>> {
+        return eventDao.observeEventsFilteredPaged(
+            sessionId = filter.sessionId,
+            packageFilter = filter.packageName,
+            eventTypeFilter = filter.eventType?.name,
+            sourceFilter = filter.source?.name,
+            classificationFilter = filter.classification?.name,
+            startTime = filter.startTime,
+            endTime = filter.endTime,
+            searchQuery = if (filter.searchQuery.isNullOrBlank()) null else filter.searchQuery.trim(),
+            limit = limit,
+            offset = offset
+        )
+            .map { list -> list.map { it.toDomain() } }
+            .flowOn(dispatchers.io)
+    }
+
+    override fun observeFilteredCount(
+        filter: com.example.inputmonitor.domain.model.EventFilterCriteria
+    ): Flow<Int> {
+        return eventDao.observeFilteredCount(
+            sessionId = filter.sessionId,
+            packageFilter = filter.packageName,
+            eventTypeFilter = filter.eventType?.name,
+            sourceFilter = filter.source?.name,
+            classificationFilter = filter.classification?.name,
+            startTime = filter.startTime,
+            endTime = filter.endTime,
+            searchQuery = if (filter.searchQuery.isNullOrBlank()) null else filter.searchQuery.trim()
+        ).flowOn(dispatchers.io)
+    }
+
+    override fun observeDistinctPackageNames(): Flow<List<String>> {
+        return eventDao.observeDistinctPackageNames()
+            .flowOn(dispatchers.io)
+    }
+
     override suspend fun deleteEventsForSession(sessionId: String): Boolean = withContext(dispatchers.io) {
         eventDao.deleteEventsForSession(sessionId) >= 0
     }

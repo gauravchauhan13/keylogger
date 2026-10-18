@@ -48,6 +48,29 @@ class RepositorySafetyValidationTest {
         override fun observeEventCountForSession(sessionId: String): Flow<Int> = flowOf(insertedEntities.size)
         override fun observeEventCounts(sessionId: String?): Flow<com.example.inputmonitor.data.dao.EventCountsTuple?> = flowOf(com.example.inputmonitor.data.dao.EventCountsTuple(total = insertedEntities.size.toLong()))
         override fun observeLatestEvent(): Flow<InteractionEventEntity?> = flowOf(insertedEntities.lastOrNull())
+        override fun observeEventsFilteredPaged(
+            sessionId: String?,
+            packageFilter: String?,
+            eventTypeFilter: String?,
+            sourceFilter: String?,
+            classificationFilter: String?,
+            startTime: Long?,
+            endTime: Long?,
+            searchQuery: String?,
+            limit: Int,
+            offset: Int
+        ): Flow<List<InteractionEventEntity>> = flowOf(insertedEntities)
+        override fun observeFilteredCount(
+            sessionId: String?,
+            packageFilter: String?,
+            eventTypeFilter: String?,
+            sourceFilter: String?,
+            classificationFilter: String?,
+            startTime: Long?,
+            endTime: Long?,
+            searchQuery: String?
+        ): Flow<Int> = flowOf(insertedEntities.size)
+        override fun observeDistinctPackageNames(): Flow<List<String>> = flowOf(emptyList())
         override suspend fun deleteEventsForSession(sessionId: String): Int = 0
         override suspend fun deleteAllEvents(): Int = 0
     }

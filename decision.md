@@ -893,6 +893,62 @@ Positive:
 Negative:
 - None.
 
+---
+
+## DEC-026 — Event Timeline Architecture, Paged Room Observation, and Multi-Dimensional Filter Engine
+
+Date:
+2026-10-18
+
+Status:
+Accepted
+
+Context:
+IMPLEMENTATION_PLAN.md §51, §52 (Phase 12), Architecture.md §56, SRS.md §48–§50, and AC-23, AC-24 mandate the Event Timeline viewer:
+1. Chronological event feed (reverse-chronological, newest first).
+2. Bounded RAM consumption via database pagination (`LIMIT :limit OFFSET :offset`), avoiding loading unbounded entities into heap memory.
+3. Multi-dimensional filtering: session, package name, event type, event source, input classification, time range, and search query.
+4. Real-time reactive observation of filtered events and count matching criteria.
+5. Detail modal dialog showing full interaction context, timestamps, metadata, and explaining privacy suppression for sensitive inputs (zero credential storage).
+
+Decision:
+1. Define domain data model `EventFilterCriteria` capturing all filter and search dimensions with `hasActiveFilters` computation.
+2. Implement SQLite queries in `InteractionEventDao`:
+   - `observeEventsFilteredPaged(...)` using `LIMIT :limit OFFSET :offset`, ordering by `timestamp DESC`.
+   - `observeFilteredCount(...)` returning total count of events matching active filters.
+   - `observeDistinctPackageNames()` for populating filter controls with real observed packages.
+3. Expose pagination and filter queries via `EventRepository` and `EventRepositoryImpl` with `dispatchers.io` execution and domain mapping.
+4. Define `TimelineUiState` containing paginated event slice (page size 50), total count, active filter criteria, distinct packages, monitoring sessions, active session, page indicators, and detail selection.
+5. Implement `TimelineViewModel` coordinating reactive state streams using `SharingStarted.Eagerly`, pagination state transitions (`nextPage`, `previousPage`, `goToPage`), filter changes, and session event deletion.
+6. Build Material 3 `EventsScreen` with:
+   - Header and top app bar with active filter indicator.
+   - Search bar supporting query text matching app name, package, or event data.
+   - Horizontally scrollable event type chips (All, Typing, Clicks, Focus, Scrolls, Windows, Sensitive).
+   - Pagination navigation strip showing exact record range (`1–50 of 214`) and page indicators.
+   - Reverse-chronological `LazyColumn` of event cards with source glyphs, app names, relative timestamps, and content preview or privacy warning pills.
+   - Event Detail dialog presenting formatted timestamps, session IDs, metadata, and clear privacy protection disclosures.
+   - Filter dialog allowing combined filtering by source, package, session, and classification.
+7. Wire `TimelineViewModel` in `AppNavigation` for `Screen.Events.route`.
+8. Implement unit and integration tests:
+   - `TimelineUiStateTest` (3 tests)
+   - `TimelineViewModelTest` (7 tests)
+   - `TimelineFlowIntegrationTest` (1 comprehensive multi-step flow test)
+   Total test coverage reaches 38 test suites / 198 unit tests passing cleanly with 100% pass rate.
+
+Reason:
+- Full adherence to Phase 12 requirements (SRS.md §48, §49, Architecture.md §56, AC-23, AC-24).
+- RAM protection: strict 50-item page size guarantees bounded memory footprint regardless of whether the database contains 100 or 100,000 events.
+- Immediate reactive updates when events arrive from background IME or accessibility ingestion.
+
+Consequences:
+Positive:
+- Complete, performant, and privacy-disclosing Event Timeline.
+- 38 test suites / 198 unit tests passing cleanly.
+- Clean debug and R8 release builds verified.
+Negative:
+- None.
+
+
 
 
 

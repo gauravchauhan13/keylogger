@@ -203,6 +203,15 @@ class UnifiedEventProcessingIntegrationTest {
             )
         }
         override fun observeLatestEvent(): Flow<InteractionEvent?> = flowOf(events.maxByOrNull { it.timestamp })
+        override fun observeEventsPaged(
+            filter: com.example.inputmonitor.domain.model.EventFilterCriteria,
+            limit: Int,
+            offset: Int
+        ): Flow<List<InteractionEvent>> = flowOf(events)
+        override fun observeFilteredCount(
+            filter: com.example.inputmonitor.domain.model.EventFilterCriteria
+        ): Flow<Int> = flowOf(events.size)
+        override fun observeDistinctPackageNames(): Flow<List<String>> = flowOf(emptyList())
         override suspend fun deleteEventsForSession(sessionId: String): Boolean {
             events.removeAll { it.sessionId == sessionId }
             return true
