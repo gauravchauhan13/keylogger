@@ -3,8 +3,11 @@ package com.example.inputmonitor.ui.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.inputmonitor.domain.model.EventCounts
 import com.example.inputmonitor.domain.model.MonitoringSession
 import com.example.inputmonitor.domain.model.SessionState
+import com.example.inputmonitor.domain.repository.EventRepository
+import com.example.inputmonitor.domain.setup.SetupStateManager
 import com.example.inputmonitor.domain.usecase.GetActiveSessionUseCase
 import com.example.inputmonitor.domain.usecase.ObserveActiveSessionUseCase
 import com.example.inputmonitor.domain.usecase.ObserveSessionStateUseCase
@@ -14,11 +17,13 @@ import com.example.inputmonitor.domain.usecase.StartMonitoringSessionUseCase
 import com.example.inputmonitor.domain.usecase.StopMonitoringSessionUseCase
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel for the Dashboard screen, managing session state and controls (Architecture.md §14).
+ * ViewModel for the Dashboard screen, managing session state, system service status,
+ * live aggregate event counters, and application context (Architecture.md §55, SRS.md §47).
  */
 class DashboardViewModel(
     private val startMonitoringSessionUseCase: StartMonitoringSessionUseCase,
@@ -26,20 +31,45 @@ class DashboardViewModel(
     private val resumeMonitoringSessionUseCase: ResumeMonitoringSessionUseCase,
     private val stopMonitoringSessionUseCase: StopMonitoringSessionUseCase,
     observeActiveSessionUseCase: ObserveActiveSessionUseCase,
-    observeSessionStateUseCase: ObserveSessionStateUseCase
+    observeSessionStateUseCase: ObserveSessionStateUseCase,
+    private val setupStateManager: SetupStateManager,
+    private val eventRepository: EventRepository
 ) : ViewModel() {
+
+    val uiState: StateFlow<DashboardUiState> = combine(
+        observeSessionStateUseCase(),
+        observeActiveSessionUseCase(),
+        setupStateManager.observeSetupState(),
+        eventRepository.observeEventCounts(),
+        eventRepository.observeLatestEvent()
+    ) { sessionState, activeSession, setupState, eventCounts, latestEvent ->
+        DashboardUiState(
+            setupState = setupState,
+            sessionState = sessionState,
+            activeSession = activeSession,
+            eventCounts = eventCounts,
+            currentApplicationLabel = latestEvent?.applicationName,
+            currentPackageName = latestEvent?.packageName
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = DashboardUiState(
+            setupState = setupStateManager.getSetupState()
+        )
+    )
 
     val sessionState: StateFlow<SessionState> = observeSessionStateUseCase()
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
+            started = SharingStarted.Eagerly,
             initialValue = SessionState.INACTIVE
         )
 
     val currentSession: StateFlow<MonitoringSession?> = observeActiveSessionUseCase()
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
+            started = SharingStarted.Eagerly,
             initialValue = null
         )
 
@@ -67,6 +97,12 @@ class DashboardViewModel(
         }
     }
 
+    fun refreshSetup() {
+        viewModelScope.launch {
+            setupStateManager.refresh()
+        }
+    }
+
     companion object {
         fun provideFactory(
             startUseCase: StartMonitoringSessionUseCase,
@@ -74,7 +110,9 @@ class DashboardViewModel(
             resumeUseCase: ResumeMonitoringSessionUseCase,
             stopUseCase: StopMonitoringSessionUseCase,
             observeActiveUseCase: ObserveActiveSessionUseCase,
-            observeStateUseCase: ObserveSessionStateUseCase
+            observeStateUseCase: ObserveSessionStateUseCase,
+            setupStateManager: SetupStateManager,
+            eventRepository: EventRepository
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -84,7 +122,9 @@ class DashboardViewModel(
                     resumeUseCase,
                     stopUseCase,
                     observeActiveUseCase,
-                    observeStateUseCase
+                    observeStateUseCase,
+                    setupStateManager,
+                    eventRepository
                 ) as T
             }
         }

@@ -27,11 +27,11 @@ Overall Status:
 IN PROGRESS
 
 Current Phase:
-Phase 10 complete; ready to begin Phase 11 (Dashboard)
+Phase 11 complete; ready to begin Phase 12 (Event Timeline)
 
 Current Objective:
-Phase 10 First-Run Setup complete: Welcome screen with transparent local-first disclosure (SRS.md §11, AC-02), PermissionCoordinator handling permissions and non-blocking denial (AC-03, AC-35), Accessibility enablement deep-link (AC-36), Keyboard enablement and IME selection (AC-37), System verification checklist (SRS.md §16), non-blocking partial setup progression (SRS.md §17), SetupStateManager state machine with onResume lifecycle refresh (Architecture.md §14, §15), SystemStatusChecker decoupling Android IPC for pure JVM testing, SetupViewModel, 32 unit test suites / 178 tests passing (100% pass rate in ~1.0s), clean debug (49,302,225 bytes) and R8 release (24,149,548 bytes) builds verified.
-Ready to implement Phase 11 (Dashboard).
+Phase 11 Dashboard complete: Real-time system capability status (Keyboard, Accessibility, Credential protection, Database), non-blocking setup alert banner (SRS.md §74, AC-35), active monitoring session status with live state badge and session controls (Start dialog, Pause, Resume, Stop), foreground application context card, live aggregate event counters grid (Total, Keys, Clicks, Focus, Scrolls, Window changes) computed directly in SQLite without loading entities into RAM (Architecture.md §55, IMPLEMENTATION_PLAN.md §50, AC-04), 35 unit test suites / 187 tests passing (100% pass rate in ~1.0s), clean debug (49,413,901 bytes) and R8 release (24,165,932 bytes) builds verified.
+Ready to implement Phase 12 (Event Timeline).
 ```
 
 Update these values as development proceeds.
@@ -310,27 +310,39 @@ Currently:
   - Added 5 new unit test suites: SetupStateTest (7 tests), PermissionCoordinatorTest (4 tests), SetupStateManagerTest (6 tests), SetupViewModelTest (4 tests), and SetupFlowIntegrationTest (11 tests validating all scenarios from IMPLEMENTATION_PLAN.md §49)
   - Verified all 32 test suites / 178 unit tests passing cleanly (100% pass rate in ~1.0s)
   - Verified clean debug build (app-debug.apk: 49,302,225 bytes)
-  - Verified clean release build with R8 shrinking (app-release.apk: 24,149,548 bytes)
+✓ Phase 11 completed:
+  - Created EventCounts immutable domain data model tracking aggregate metrics: total, keyboard, accessibility, clicks, focus, scrolls, and window changes (Architecture.md §55)
+  - Created EventCountsTuple Room query tuple and implemented observeEventCounts(sessionId) in InteractionEventDao using single-row SQLite COUNT(*) and conditional SUM expressions (Architecture.md §55, IMPLEMENTATION_PLAN.md §50, AC-04)
+  - Implemented observeLatestEvent() in InteractionEventDao ordering by timestamp DESC LIMIT 1 for observing foreground application context without entity collection overhead
+  - Updated EventRepository and EventRepositoryImpl to expose observeEventCounts and observeLatestEvent with I/O thread dispatching
+  - Created DashboardUiState combining SetupState, SessionState, active MonitoringSession, EventCounts, and foreground application context with computed hasIncompleteServices indicator
+  - Implemented DashboardViewModel with combine() over all 5 reactive streams using SharingStarted.Eagerly and session control methods (startSession, pauseSession, resumeSession, stopSession, refreshSetup)
+  - Implemented Material 3 DashboardScreen with System Status cards, Service Warning alert banner with non-blocking setup link (SRS.md §74, AC-35), Session Control card with live badge and duration timer, Foreground Application Context card, Live Event Counters grid, Quick Navigation row, and Start Session dialog
+  - Connected AppNavigation to inject dependencies into DashboardViewModel factory
+  - Added 3 new unit & integration test suites: DashboardUiStateTest (2 tests), DashboardViewModelTest (6 tests), DashboardFlowIntegrationTest (1 comprehensive integration test validating end-to-end multi-step flow)
+  - Verified all 35 test suites / 187 unit tests passing cleanly (100% pass rate in ~1.0s)
+  - Verified clean debug build (app-debug.apk: 49,413,901 bytes)
+  - Verified clean release build with R8 shrinking (app-release.apk: 24,165,932 bytes)
 ```
 
 ---
 
 # 7. Next Tasks
 
-Next tasks for Phase 11 (Dashboard):
+Next tasks for Phase 12 (Event Timeline):
 
 ```text
-1. Begin Phase 11 (Dashboard).
+1. Begin Phase 12 (Event Timeline).
 
-2. Implement System Status component on Dashboard (displaying keyboard active status, accessibility service status, session state, and database status).
+2. Implement EventTimelineViewModel with paginated interaction events (using Paging 3 or Room LIMIT/OFFSET queries per Architecture.md §56).
 
-3. Implement Session Status indicator with real-time state badge (ACTIVE, PAUSED, STOPPED, INACTIVE) and elapsed duration timer.
+3. Implement TimelineScreen with scrollable LazyColumn displaying chronological event cards with event type icon, source badge, application name, package name, and formatted timestamp.
 
-4. Implement Event Counters and live breakdown (total events, keyboard keystrokes, accessibility interactions).
+4. Implement Event Detail dialog or expander showing event metadata, classification (NORMAL_TEXT, SENSITIVE_PASSWORD), and non-sensitive data preview.
 
-5. Implement Current Application Context card showing active foreground app name and package.
+5. Implement filter controls: package filter dropdown/search, event type chips (All, Keystrokes, Clicks, Focus, Scrolls), and session filter.
 
-6. Implement Quick Action controls (Start / Pause / Resume / Stop session dialogs and direct navigation to Events, Statistics, and Settings).
+6. Implement clear events / delete session confirmation actions.
 
 7. Update decision.md, tech.md, flow.md, and PROGRESS.md in required sequence.
 ```
@@ -510,7 +522,7 @@ EXCLUDED — allowBackup=false and data_extraction_rules exclude database files 
 
 ```text
 Unit tests:
-ACTIVE — 18 test suites / 104 tests passing:
+ACTIVE — 35 test suites / 187 tests passing:
   - SanityTest (1 test)
   - DispatcherProviderTest (1 test)
   - NavigationRoutesTest (1 test)
@@ -529,6 +541,23 @@ ACTIVE — 18 test suites / 104 tests passing:
   - SensitiveInputDetectorTest (11 tests)
   - PrivacyFilterTest (7 tests)
   - PrivacyDefenseInDepthTest (3 tests)
+  - EventProcessorTest (11 tests)
+  - ContextResolverTest (5 tests)
+  - ImeEventPublisherTest (4 tests)
+  - CustomKeyboardServiceTest (6 tests)
+  - AccessibilityEventFilterTest (6 tests)
+  - AccessibilityEventMapperTest (7 tests)
+  - AccessibilityEventPublisherTest (2 tests)
+  - AppAccessibilityServiceTest (5 tests)
+  - UnifiedEventProcessingIntegrationTest (6 tests)
+  - SetupStateTest (7 tests)
+  - PermissionCoordinatorTest (4 tests)
+  - SetupStateManagerTest (6 tests)
+  - SetupViewModelTest (4 tests)
+  - SetupFlowIntegrationTest (11 tests)
+  - DashboardUiStateTest (2 tests)
+  - DashboardViewModelTest (6 tests)
+  - DashboardFlowIntegrationTest (1 test)
 
 Database tests:
 ACTIVE — DAO/Repository unit tests operational
@@ -543,7 +572,7 @@ IME tests:
 ACTIVE — KeyProcessor, KeyboardController, KeyboardLayout, and EditorInfoAnalyzer operational
 
 Accessibility tests:
-NOT STARTED (scheduled for Phase 8)
+ACTIVE — AccessibilityEventFilter, AccessibilityEventMapper, AccessibilityEventPublisher, AppAccessibilityService operational
 
 Performance tests:
 NOT STARTED
@@ -578,14 +607,14 @@ Legend:
 
 # 14. Current Performance Baseline
 
-Measured during Phase 6 Editor Analysis and Privacy:
+Measured during Phase 11 Dashboard:
 
 ```text
 Debug APK size:
-49,131,050 bytes (~46.85 MB) — multi-ABI unminified with Room, SQLCipher, SessionManager, CustomKeyboardService, complete multi-layout engine, PrivacyFilter
+49,413,901 bytes (~47.12 MB) — multi-ABI unminified with Room, SQLCipher, SessionManager, CustomKeyboardService, complete multi-layout engine, PrivacyFilter, EventProcessor, ContextResolver, AppAccessibilityService, SetupStateManager, DashboardScreen
 
 Release APK size:
-24,084,012 bytes (~22.96 MB) — multi-ABI, R8 minified + shrunk resources
+24,165,932 bytes (~23.05 MB) — multi-ABI, R8 minified + shrunk resources
 
 Cold startup:
 TBD (measured on physical/virtual device)
@@ -634,13 +663,13 @@ Build:
 testDebugUnitTest + assembleDebug + assembleRelease
 
 Type:
-Full verification build (Debug APK + Release APK + 18 Unit test suites / 104 tests)
+Full verification build (Debug APK + Release APK + 35 Unit test suites / 187 tests)
 
 Date:
-2026-10-17
+2026-10-18
 
 Result:
-SUCCESS (84 actionable tasks: 14 executed, 70 up-to-date)
+SUCCESS (84 actionable tasks: 12 executed, 72 up-to-date)
 ```
 
 Update after meaningful verified builds.
@@ -957,6 +986,11 @@ DEC-017: Session State Machine and Session Gate Architecture (thread-safe StateF
 DEC-018: High-Performance Native KeyboardView and Input Delivery Decoupling (sub-5ms touch-to-render, 0 allocations)
 DEC-019: Context-Specific Keyboard Layout Adaptation and Caps Lock State Machine (QWERTY, Symbols, Numbers, Phone, Email, URI)
 DEC-020: Multi-Layer Privacy Architecture, Editor Analysis, and Defense-in-Depth Sanitization (zero persistent credential guarantee)
+DEC-021: Context Resolution Subsystem, Human-Readable Application Label Resolution, and Memory-Bounded Caching
+DEC-022: AccessibilityService Ingestion Pipeline, Content Minimization, and Decoupled Event Testing
+DEC-023: Unified Event Processing and Concurrent Ingestion Integration
+DEC-024: First-Run Setup State Machine, Decoupled System Status Checking, and Non-Blocking Partial Setup
+DEC-025: Dashboard Architecture, Aggregate Event Metrics, and Live Context Observation
 ```
 
 ---
@@ -967,7 +1001,7 @@ At the end of every session there must be ONE clearly stated next action.
 
 Current:
 
-> Begin Phase 7 (IME Event Pipeline): Implement ImeEventPublisher, connect CustomKeyboardService to publish RawInteractionEvents on key actions, wire EventProcessor, and verify that InputConnection delivery remains 100% independent of event logging.
+> Begin Phase 12 (Event Timeline): Implement TimelineViewModel with Paging 3 / room pagination for interaction event feed, build TimelineScreen with event item cards, search/package filter controls, event type chips, and timestamp formatting (Architecture.md §56, SRS.md §48, §50, §51).
 
 This prevents a future agent from guessing where to resume.
 

@@ -102,6 +102,8 @@ class EventProcessorTest {
         override suspend fun getEventsFiltered(sessionId: String, packageFilter: String?, eventTypeFilter: String?, startTime: Long?, endTime: Long?): List<InteractionEvent> = emptyList()
         override suspend fun getEventCountForSession(sessionId: String): Int = insertedEvents.size
         override fun observeEventCountForSession(sessionId: String): Flow<Int> = flowOf(insertedEvents.size)
+        override fun observeEventCounts(sessionId: String?): Flow<com.example.inputmonitor.domain.model.EventCounts> = flowOf(com.example.inputmonitor.domain.model.EventCounts(total = insertedEvents.size.toLong()))
+        override fun observeLatestEvent(): Flow<InteractionEvent?> = flowOf(insertedEvents.lastOrNull())
         override suspend fun deleteEventsForSession(sessionId: String): Boolean = true
         override suspend fun deleteAllEvents(): Boolean = true
     }

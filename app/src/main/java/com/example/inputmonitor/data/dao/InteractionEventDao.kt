@@ -54,9 +54,39 @@ interface InteractionEventDao {
     @Query("SELECT COUNT(*) FROM interaction_events WHERE sessionId = :sessionId")
     fun observeEventCountForSession(sessionId: String): Flow<Int>
 
+    @Query("""
+        SELECT 
+            COUNT(*) as total,
+            COALESCE(SUM(CASE WHEN source = 'KEYBOARD' THEN 1 ELSE 0 END), 0) as keyboard,
+            COALESCE(SUM(CASE WHEN source = 'ACCESSIBILITY' THEN 1 ELSE 0 END), 0) as accessibility,
+            COALESCE(SUM(CASE WHEN eventType = 'VIEW_CLICKED' THEN 1 ELSE 0 END), 0) as clicks,
+            COALESCE(SUM(CASE WHEN eventType = 'VIEW_FOCUSED' THEN 1 ELSE 0 END), 0) as focus,
+            COALESCE(SUM(CASE WHEN eventType = 'VIEW_SCROLLED' THEN 1 ELSE 0 END), 0) as scrolls,
+            COALESCE(SUM(CASE WHEN eventType IN ('WINDOW_STATE_CHANGED', 'WINDOWS_CHANGED') THEN 1 ELSE 0 END), 0) as windowChanges
+        FROM interaction_events
+        WHERE (:sessionId IS NULL OR sessionId = :sessionId)
+    """)
+    fun observeEventCounts(sessionId: String? = null): Flow<EventCountsTuple?>
+
+    @Query("SELECT * FROM interaction_events ORDER BY timestamp DESC LIMIT 1")
+    fun observeLatestEvent(): Flow<InteractionEventEntity?>
+
     @Query("DELETE FROM interaction_events WHERE sessionId = :sessionId")
     suspend fun deleteEventsForSession(sessionId: String): Int
 
     @Query("DELETE FROM interaction_events")
     suspend fun deleteAllEvents(): Int
 }
+
+/**
+ * Tuple representing aggregate event metrics without loading entities (Architecture.md §55).
+ */
+data class EventCountsTuple(
+    val total: Long = 0,
+    val keyboard: Long = 0,
+    val accessibility: Long = 0,
+    val clicks: Long = 0,
+    val focus: Long = 0,
+    val scrolls: Long = 0,
+    val windowChanges: Long = 0
+)

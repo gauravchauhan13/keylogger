@@ -63,6 +63,8 @@ class PrivacyDefenseInDepthTest {
         override suspend fun getEventsFiltered(sessionId: String, packageFilter: String?, eventTypeFilter: String?, startTime: Long?, endTime: Long?): List<InteractionEventEntity> = emptyList()
         override suspend fun getEventCountForSession(sessionId: String): Int = insertedEntities.size
         override fun observeEventCountForSession(sessionId: String): Flow<Int> = flowOf(insertedEntities.size)
+        override fun observeEventCounts(sessionId: String?): Flow<com.example.inputmonitor.data.dao.EventCountsTuple?> = flowOf(com.example.inputmonitor.data.dao.EventCountsTuple(total = insertedEntities.size.toLong()))
+        override fun observeLatestEvent(): Flow<InteractionEventEntity?> = flowOf(insertedEntities.lastOrNull())
         override suspend fun deleteEventsForSession(sessionId: String): Int = 0
         override suspend fun deleteAllEvents(): Int = 0
     }

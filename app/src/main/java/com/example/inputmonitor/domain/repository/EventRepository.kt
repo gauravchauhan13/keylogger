@@ -22,6 +22,8 @@ interface EventRepository {
     ): List<InteractionEvent>
     suspend fun getEventCountForSession(sessionId: String): Int
     fun observeEventCountForSession(sessionId: String): Flow<Int>
+    fun observeEventCounts(sessionId: String? = null): Flow<com.example.inputmonitor.domain.model.EventCounts>
+    fun observeLatestEvent(): Flow<InteractionEvent?>
     suspend fun deleteEventsForSession(sessionId: String): Boolean
     suspend fun deleteAllEvents(): Boolean
 }

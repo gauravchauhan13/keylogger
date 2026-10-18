@@ -188,6 +188,21 @@ class UnifiedEventProcessingIntegrationTest {
         override suspend fun getEventsFiltered(sessionId: String, packageFilter: String?, eventTypeFilter: String?, startTime: Long?, endTime: Long?): List<InteractionEvent> = events
         override suspend fun getEventCountForSession(sessionId: String): Int = events.filter { it.sessionId == sessionId }.size
         override fun observeEventCountForSession(sessionId: String): Flow<Int> = flowOf(events.filter { it.sessionId == sessionId }.size)
+        override fun observeEventCounts(sessionId: String?): Flow<com.example.inputmonitor.domain.model.EventCounts> {
+            val matching = if (sessionId != null) events.filter { it.sessionId == sessionId } else events
+            return flowOf(
+                com.example.inputmonitor.domain.model.EventCounts(
+                    total = matching.size.toLong(),
+                    keyboard = matching.count { it.source == EventSource.KEYBOARD }.toLong(),
+                    accessibility = matching.count { it.source == EventSource.ACCESSIBILITY }.toLong(),
+                    clicks = matching.count { it.eventType == EventType.VIEW_CLICKED }.toLong(),
+                    focus = matching.count { it.eventType == EventType.VIEW_FOCUSED }.toLong(),
+                    scrolls = matching.count { it.eventType == EventType.VIEW_SCROLLED }.toLong(),
+                    windowChanges = matching.count { it.eventType == EventType.WINDOW_STATE_CHANGED || it.eventType == EventType.WINDOWS_CHANGED }.toLong()
+                )
+            )
+        }
+        override fun observeLatestEvent(): Flow<InteractionEvent?> = flowOf(events.maxByOrNull { it.timestamp })
         override suspend fun deleteEventsForSession(sessionId: String): Boolean {
             events.removeAll { it.sessionId == sessionId }
             return true

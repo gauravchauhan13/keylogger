@@ -187,12 +187,12 @@ Espresso Core           — Instrumentation (3.6.1)
 
 ## Baseline Build Metrics
 
-| Metric | Phase 0 Baseline | Phase 1 Foundation | Phase 2 Data Foundation | Phase 3 Monitoring Sessions | Phase 4 Basic Keyboard | Phase 5 Complete Keyboard | Phase 6 Editor & Privacy | Phase 7 IME Pipeline | Phase 8 Accessibility | Phase 9 Integration | Phase 10 First-Run Setup | Notes |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Debug APK Size | 48,608,524 bytes (~46.35 MB) | 48,720,225 bytes (~46.46 MB) | 48,887,522 bytes (~46.62 MB) | 49,048,518 bytes (~46.78 MB) | 49,127,138 bytes (~46.85 MB) | 49,137,994 bytes (~46.86 MB) | 49,131,050 bytes (~46.85 MB) | 49,141,834 bytes (~46.86 MB) | 49,141,834 bytes (~46.86 MB) | 49,141,834 bytes (~46.86 MB) | 49,302,225 bytes (~47.02 MB) | Multi-ABI, unminified, Room + SQLCipher + DataStore + SessionManager + CustomKeyboardService + PrivacyFilter + EventProcessor + ContextResolver + AppAccessibilityService + SetupStateManager |
-| Release APK Size | 22,945,972 bytes (~21.88 MB) | 23,318,576 bytes (~22.24 MB) | 23,646,256 bytes (~22.55 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | 24,084,012 bytes (~22.96 MB) | 24,084,012 bytes (~22.96 MB) | 24,084,012 bytes (~22.96 MB) | 24,084,012 bytes (~22.96 MB) | 24,149,548 bytes (~23.03 MB) | Multi-ABI, R8 minified + shrunk resources. SetupStateManager + SetupViewModel + Material 3 onboarding/setup components |
-| Unit Test Suite | 1 test (PASSED) | 3 suites / 5 tests (PASSED) | 8 suites / 17 tests (PASSED) | 11 suites / 37 tests (PASSED) | 14 suites / 52 tests (PASSED) | 14 suites / 66 tests (PASSED) | 18 suites / 104 tests (PASSED) | 22 suites / 120 tests (PASSED) | 26 suites / 140 tests (PASSED) | 27 suites / 146 tests (PASSED) | 32 suites / 178 tests (PASSED) | Added SetupStateTest (7), PermissionCoordinatorTest (4), SetupStateManagerTest (6), SetupViewModelTest (4), SetupFlowIntegrationTest (11). 100% pass rate in ~1.0s |
-| Gradle Tasks Executed | 70 tasks | 89 tasks | 91 tasks | 94 tasks | 97 tasks | 97 tasks | 84 tasks | 84 tasks | 84 tasks | 84 tasks | 84 tasks | Clean execution, KSP processing Room schemas, config cache stored |
+| Metric | Phase 0 Baseline | Phase 1 Foundation | Phase 2 Data Foundation | Phase 3 Monitoring Sessions | Phase 4 Basic Keyboard | Phase 5 Complete Keyboard | Phase 6 Editor & Privacy | Phase 7 IME Pipeline | Phase 8 Accessibility | Phase 9 Integration | Phase 10 First-Run Setup | Phase 11 Dashboard | Notes |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Debug APK Size | 48,608,524 bytes (~46.35 MB) | 48,720,225 bytes (~46.46 MB) | 48,887,522 bytes (~46.62 MB) | 49,048,518 bytes (~46.78 MB) | 49,127,138 bytes (~46.85 MB) | 49,137,994 bytes (~46.86 MB) | 49,131,050 bytes (~46.85 MB) | 49,141,834 bytes (~46.86 MB) | 49,141,834 bytes (~46.86 MB) | 49,141,834 bytes (~46.86 MB) | 49,302,225 bytes (~47.02 MB) | 49,413,901 bytes (~47.12 MB) | Multi-ABI, unminified, Room + SQLCipher + DataStore + SessionManager + CustomKeyboardService + PrivacyFilter + EventProcessor + ContextResolver + AppAccessibilityService + SetupStateManager + DashboardScreen |
+| Release APK Size | 22,945,972 bytes (~21.88 MB) | 23,318,576 bytes (~22.24 MB) | 23,646,256 bytes (~22.55 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | 24,084,012 bytes (~22.96 MB) | 24,084,012 bytes (~22.96 MB) | 24,084,012 bytes (~22.96 MB) | 24,084,012 bytes (~22.96 MB) | 24,149,548 bytes (~23.03 MB) | 24,165,932 bytes (~23.05 MB) | Multi-ABI, R8 minified + shrunk resources. DashboardViewModel + DashboardScreen + Live Event Aggregation + Material 3 metrics components |
+| Unit Test Suite | 1 test (PASSED) | 3 suites / 5 tests (PASSED) | 8 suites / 17 tests (PASSED) | 11 suites / 37 tests (PASSED) | 14 suites / 52 tests (PASSED) | 14 suites / 66 tests (PASSED) | 18 suites / 104 tests (PASSED) | 22 suites / 120 tests (PASSED) | 26 suites / 140 tests (PASSED) | 27 suites / 146 tests (PASSED) | 32 suites / 178 tests (PASSED) | 35 suites / 187 tests (PASSED) | Added DashboardUiStateTest (2), DashboardViewModelTest (6), DashboardFlowIntegrationTest (1). 100% pass rate in ~1.0s |
+| Gradle Tasks Executed | 70 tasks | 89 tasks | 91 tasks | 94 tasks | 97 tasks | 97 tasks | 84 tasks | 84 tasks | 84 tasks | 84 tasks | 84 tasks | 84 tasks | Clean execution, KSP processing Room schemas, config cache stored |
 
 ---
 
@@ -254,6 +254,43 @@ MainActivity (onResume) ────────► SetupStateManager.refresh()
 - `SystemStatusChecker`: Isolates Android system settings and service checks for deterministic JVM testing.
 - `PermissionCoordinator`: Handles runtime permissions without trapping the user upon denial.
 - `SetupStateManager`: Reactive coordinator reflecting real-time configuration changes.
+
+---
+
+## Dashboard Subsystem
+
+```text
+Room DB (SQLite Engine)        SetupStateManager        SessionManager
+  │             │                      │                       │
+  │ (COUNT/SUM) │ (Latest Event)       │                       │
+  ▼             ▼                      ▼                       ▼
+EventCounts   Latest Event         SetupState         SessionState + ActiveSession
+  │             │                      │                       │
+  └─────────────┴───────────────┬──────┴───────────────────────┘
+                                ▼
+                       DashboardViewModel
+                    (combine() with Eagerly)
+                                │
+                                ▼
+                       DashboardUiState
+                                │
+                                ▼
+                        DashboardScreen
+   ┌────────────────────────────────────────────────────────┐
+   │ • System Capabilities: Keyboard, Accessibility, DB     │
+   │ • Service Warning Banner (Non-blocking settings link)  │
+   │ • Session Controls: Start, Pause, Resume, Stop actions │
+   │ • Current App Context: "Notes App" (com.example.notes) │
+   │ • Live Metric Counters: Total, Keys, Clicks, Scrolls   │
+   │ • Quick Actions: Timeline, Settings, Setup Wizard      │
+   └────────────────────────────────────────────────────────┘
+```
+
+- `EventCounts`: Immutable domain model tracking aggregate metrics (`total`, `keyboard`, `accessibility`, `clicks`, `focus`, `scrolls`, `windowChanges`).
+- `EventCountsTuple`: Zero-memory Room tuple computed via direct SQLite `COUNT(*)` and conditional `SUM` expressions, completely avoiding entity deserialization into RAM.
+- `DashboardUiState`: Reactive unified state providing live system capability indicators, foreground app context, and session status.
+- `DashboardViewModel`: Central presentation coordinator ensuring real-time state delivery via `SharingStarted.Eagerly`.
+- `DashboardScreen`: Material 3 edge-to-edge UI with responsive status badges and interactive session management.
 
 ---
 

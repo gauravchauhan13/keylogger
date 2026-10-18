@@ -839,6 +839,61 @@ Positive:
 Negative:
 - None
 
+---
+
+## DEC-025 — Dashboard Architecture, Aggregate Event Metrics, and Live Context Observation
+
+Date:
+2026-10-18
+
+Status:
+Accepted
+
+Context:
+IMPLEMENTATION_PLAN.md §50, §51 (Phase 11), Architecture.md §55, SRS.md §47, §74, and AC-04–AC-06 mandate the main application Dashboard:
+1. Real-time capability status: custom keyboard (enabled/selected), accessibility service (enabled/disabled), credential protection (active), database readiness.
+2. Setup action prompt if services are incomplete or disabled without trapping or blocking the user (SRS.md §74, AC-35).
+3. Active monitoring session status with live state badge (`ACTIVE`, `PAUSED`, `STOPPED`, `INACTIVE`), start time, and notes.
+4. Session control state machine actions (Start dialog, Pause, Resume, Stop).
+5. Current foreground application context (human-readable label + package name) derived from the latest event.
+6. Live aggregate event counters (Total, Keyboard, Clicks, Focus, Scrolls, Window changes) computed efficiently via database queries without loading unbounded event entities into RAM (IMPLEMENTATION_PLAN.md §50, AC-04).
+
+Decision:
+1. Define immutable domain data model `EventCounts` tracking aggregate metrics (`total`, `keyboard`, `accessibility`, `clicks`, `focus`, `scrolls`, `windowChanges`).
+2. Implement single-row SQL aggregation query `observeEventCounts(sessionId: String? = null): Flow<EventCountsTuple?>` in `InteractionEventDao` using `COUNT(*)` and conditional `COALESCE(SUM(CASE WHEN ... THEN 1 ELSE 0 END), 0)`.
+3. Implement `observeLatestEvent(): Flow<InteractionEventEntity?>` in `InteractionEventDao` ordering by `timestamp DESC LIMIT 1` to observe the current foreground application context without entity collection.
+4. Expose `observeEventCounts` and `observeLatestEvent` through `EventRepository` and `EventRepositoryImpl` with thread dispatching on `dispatchers.io`.
+5. Define `DashboardUiState` combining `SetupState`, `SessionState`, `activeSession`, `EventCounts`, and current application context with computed `hasIncompleteServices` property.
+6. Implement `DashboardViewModel` with `combine(...)` across all 5 state streams using `SharingStarted.Eagerly` for immediate state delivery and session control methods (`startSession`, `pauseSession`, `resumeSession`, `stopSession`, `refreshSetup`).
+7. Implement Material 3 `DashboardScreen` featuring:
+   - System Capability Status cards with active/inactive indicators.
+   - Warning banner with action button when services are disabled or incomplete.
+   - Session Control card with session name, state badge, duration/start time, and context-sensitive action buttons.
+   - Current Application Context card showing human-readable label and package identifier.
+   - Live Event Counters grid displaying real-time metrics for total, keyboard, clicks, focus, scroll, and window change interactions.
+   - Quick navigation actions to Event Timeline, Settings, and Setup Wizard.
+   - Start Session dialog with input fields for session name and research notes.
+8. Connect `AppNavigation` to provide dependencies to `DashboardViewModel` factory.
+9. Implement unit and integration tests:
+   - `DashboardUiStateTest` (2 tests)
+   - `DashboardViewModelTest` (6 tests)
+   - `DashboardFlowIntegrationTest` (1 comprehensive end-to-end multi-step flow test)
+   Total test coverage reaches 35 test suites / 187 tests passing with 100% pass rate.
+
+Reason:
+- Full adherence to Phase 11 requirements (SRS.md §47, §74, Architecture.md §55).
+- RAM protection: aggregate SQL queries compute metrics directly in SQLite engine, preventing OutOfMemory crashes on large event datasets.
+- Reactive, non-blocking UI updating in real-time as users type or interact with external apps.
+
+Consequences:
+Positive:
+- Clean, responsive, and robust Dashboard architecture.
+- 35 test suites / 187 unit tests passing cleanly in ~1.0 second.
+- Clean debug and R8 release builds verified.
+Negative:
+- None.
+
+
 
 
 

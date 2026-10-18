@@ -81,6 +81,32 @@ class EventRepositoryImpl(
             .flowOn(dispatchers.io)
     }
 
+    override fun observeEventCounts(sessionId: String?): Flow<com.example.inputmonitor.domain.model.EventCounts> {
+        return eventDao.observeEventCounts(sessionId)
+            .map { tuple ->
+                if (tuple != null) {
+                    com.example.inputmonitor.domain.model.EventCounts(
+                        total = tuple.total,
+                        keyboard = tuple.keyboard,
+                        accessibility = tuple.accessibility,
+                        clicks = tuple.clicks,
+                        focus = tuple.focus,
+                        scrolls = tuple.scrolls,
+                        windowChanges = tuple.windowChanges
+                    )
+                } else {
+                    com.example.inputmonitor.domain.model.EventCounts()
+                }
+            }
+            .flowOn(dispatchers.io)
+    }
+
+    override fun observeLatestEvent(): Flow<InteractionEvent?> {
+        return eventDao.observeLatestEvent()
+            .map { it?.toDomain() }
+            .flowOn(dispatchers.io)
+    }
+
     override suspend fun deleteEventsForSession(sessionId: String): Boolean = withContext(dispatchers.io) {
         eventDao.deleteEventsForSession(sessionId) >= 0
     }

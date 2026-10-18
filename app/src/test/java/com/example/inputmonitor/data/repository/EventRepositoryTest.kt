@@ -86,6 +86,24 @@ class EventRepositoryTest {
             return flowOf(events.count { it.sessionId == sessionId })
         }
 
+        override fun observeEventCounts(sessionId: String?): Flow<com.example.inputmonitor.data.dao.EventCountsTuple?> {
+            val matching = if (sessionId != null) events.filter { it.sessionId == sessionId } else events
+            val tuple = com.example.inputmonitor.data.dao.EventCountsTuple(
+                total = matching.size.toLong(),
+                keyboard = matching.count { it.source == "KEYBOARD" }.toLong(),
+                accessibility = matching.count { it.source == "ACCESSIBILITY" }.toLong(),
+                clicks = matching.count { it.eventType == "VIEW_CLICKED" }.toLong(),
+                focus = matching.count { it.eventType == "VIEW_FOCUSED" }.toLong(),
+                scrolls = matching.count { it.eventType == "VIEW_SCROLLED" }.toLong(),
+                windowChanges = matching.count { it.eventType == "WINDOW_STATE_CHANGED" || it.eventType == "WINDOWS_CHANGED" }.toLong()
+            )
+            return flowOf(tuple)
+        }
+
+        override fun observeLatestEvent(): Flow<InteractionEventEntity?> {
+            return flowOf(events.maxByOrNull { it.timestamp })
+        }
+
         override suspend fun deleteEventsForSession(sessionId: String): Int {
             val countBefore = events.size
             events.removeAll { it.sessionId == sessionId }

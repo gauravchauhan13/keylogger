@@ -428,13 +428,55 @@ Repositories map to domain models for UI/ViewModel consumption
 # 12. Dashboard Flow
 
 ```text
-Dashboard Screen
+Dashboard Screen Launched
    ↓
-ViewModel collects from repository
+DashboardViewModel initializes StateFlow (SharingStarted.Eagerly)
+   ├── combine(
+   │     observeSessionStateUseCase(),
+   │     observeActiveSessionUseCase(),
+   │     setupStateManager.observeSetupState(),
+   │     eventRepository.observeEventCounts(),
+   │     eventRepository.observeLatestEvent()
+   │   )
    ↓
-Display: active session info, event counts, recent events
-   ↓
-User navigates to: Timeline / Statistics / Sessions / Export / Settings
+UI State Emits: DashboardUiState
+   │
+   ├── [System Capability Card]
+   │     • Custom Keyboard: Enabled / Selected
+   │     • Accessibility Service: Active / Inactive
+   │     • Protection Layer: Active (Zero Credential Storage)
+   │     • Database: Ready
+   │
+   ├── [Incomplete Services Warning Banner] (SRS.md §74, AC-35)
+   │     • Displayed if accessibilityEnabled == false or imeSelected == false
+   │     • "Fix Configuration" button routes to Setup Wizard without blocking
+   │
+   ├── [Session Control Card]
+   │     • Session Name & State Badge (ACTIVE / PAUSED / STOPPED / INACTIVE)
+   │     • Duration elapsed / Start timestamp
+   │     • State Machine Actions:
+   │         - INACTIVE / STOPPED → [Start Session] (Opens name/notes dialog)
+   │         - ACTIVE → [Pause Session], [Stop Session]
+   │         - PAUSED → [Resume Session], [Stop Session]
+   │
+   ├── [Current Application Context Card]
+   │     • Latest interaction app: Human-readable label (e.g. "Notes Application")
+   │     • Target package: e.g. "com.example.notes"
+   │     • Derived reactively from observeLatestEvent() without memory loading
+   │
+   ├── [Live Event Counters Grid] (Architecture.md §55, AC-04)
+   │     • Total Events (SQLite COUNT(*))
+   │     • Keyboard Keystrokes (source == 'KEYBOARD')
+   │     • Clicks (eventType == 'VIEW_CLICKED')
+   │     • Focus Changes (eventType == 'VIEW_FOCUSED')
+   │     • Window Changes (eventType IN ('WINDOW_STATE_CHANGED', 'WINDOWS_CHANGED'))
+   │     • Scrolls (eventType == 'VIEW_SCROLLED')
+   │     • Computed entirely in SQLite via EventCountsTuple (Zero Entity RAM allocation)
+   │
+   └── [Quick Navigation Row]
+         • [Timeline] → Navigates to Event Timeline Screen
+         • [Setup Wizard] → Navigates to Setup / Permissions Verification
+         • [Settings] → Navigates to App Configuration Screen
 ```
 
 ---

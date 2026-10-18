@@ -81,20 +81,21 @@ fun AppNavigation(
                     resumeUseCase = container.resumeMonitoringSessionUseCase,
                     stopUseCase = container.stopMonitoringSessionUseCase,
                     observeActiveUseCase = container.observeActiveSessionUseCase,
-                    observeStateUseCase = container.observeSessionStateUseCase
+                    observeStateUseCase = container.observeSessionStateUseCase,
+                    setupStateManager = container.setupStateManager,
+                    eventRepository = container.eventRepository
                 )
             )
 
-            val sessionState by dashboardViewModel.sessionState.collectAsState()
-            val currentSession by dashboardViewModel.currentSession.collectAsState()
+            val uiState by dashboardViewModel.uiState.collectAsState()
 
             DashboardScreen(
-                sessionState = sessionState,
-                currentSession = currentSession,
+                uiState = uiState,
                 onStartSession = { name, notes -> dashboardViewModel.startSession(name, notes) },
                 onPauseSession = { dashboardViewModel.pauseSession() },
                 onResumeSession = { dashboardViewModel.resumeSession() },
                 onStopSession = { dashboardViewModel.stopSession() },
+                onRefreshSetup = { dashboardViewModel.refreshSetup() },
                 onNavigateToEvents = {
                     navController.navigate(Screen.Events.route)
                 },
