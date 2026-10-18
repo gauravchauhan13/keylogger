@@ -798,6 +798,48 @@ Positive:
 Negative:
 - None
 
+---
+
+## DEC-024 — First-Run Setup State Machine, Decoupled System Status Checking, and Non-Blocking Partial Setup
+
+Date:
+2026-10-18
+
+Status:
+Accepted
+
+Context:
+IMPLEMENTATION_PLAN.md §48, §49 (Phase 10), Architecture.md §14–§17, and SRS.md §10–§18 dictate the first-run onboarding, setup wizard, and verification experience. Setup involves multiple independent system dimensions: Android runtime permissions, AccessibilityService enablement in Android Settings, Custom Keyboard IME enablement in system settings, Custom Keyboard selection via IME picker dialog, and encrypted database availability.
+Key engineering challenges:
+1. SRS.md §17 and AC-35 require that incomplete configuration or permission denial must never trap the user or loop endlessly in settings. Partial setup (e.g. keyboard selected but accessibility skipped, or vice versa) must allow proceeding to the Dashboard.
+2. Architecture.md §15 requires that `SetupState` automatically refreshes when returning to the application from Android system settings on `ON_RESUME`.
+3. Directly calling Android system services (`AccessibilityManager`, `InputMethodManager`, `Settings.Secure`) makes unit testing difficult and non-deterministic without real devices.
+
+Decision:
+1. Define domain model `SetupState` tracking all system readiness flags with computed properties: `isComplete` (all capabilities ready) and `isOperational` (database ready and at least one event source configured).
+2. Create `SystemStatusChecker` interface and `AndroidSystemStatusChecker` implementation encapsulating Android `AccessibilityManager`, `Settings.Secure`, and `InputMethodManager` queries, enabling 100% pure JVM unit testing via test doubles without framework mocking.
+3. Implement `PermissionCoordinator` and `PermissionCoordinatorImpl` representing permission denial as observable UI state (`isPermissionDenied`) with user dismissal (`dismissPermissionDeniedAlert()`) rather than runtime exceptions or blocking loops (AC-35).
+4. Implement `SetupStateManager` and `SetupStateManagerImpl` observing `SessionManager.sessionState` and `PreferencesRepository.isOnboardingCompleted`, executing async checks on `dispatchers.io`, and exposing a reactive `StateFlow<SetupState>`.
+5. Connect `MainActivity.onResume` to `setupStateManager.refresh()`, ensuring configuration instantly updates when the user returns from Android Settings.
+6. Implement `SetupViewModel`, `OnboardingScreen` (welcome and transparent local-only disclosure per SRS.md §11, AC-02), and `SetupScreen` (interactive wizard with system verification status card per SRS.md §16). If setup is incomplete, an explicit "Proceed with Partial Setup" option allows accessing the Dashboard without blockage (SRS.md §17).
+7. Update `AppNavigation` to route to `Dashboard` if `isOnboardingCompleted == true`, or `Onboarding` if first launch.
+8. Add 5 new test suites: `SetupStateTest` (7 tests), `PermissionCoordinatorTest` (4 tests), `SetupStateManagerTest` (6 tests), `SetupViewModelTest` (4 tests), and `SetupFlowIntegrationTest` (11 tests covering all scenarios from IMPLEMENTATION_PLAN.md §49), bringing test coverage to 32 test suites / 178 tests with 100% pass rate.
+
+Reason:
+- Full adherence to Phase 10 requirements (SRS.md §10–§18, AC-02, AC-03, AC-35, AC-36, AC-37)
+- Guaranteed non-blocking user experience: users can proceed with partial setup and return to setup at any time
+- Zero-mock JVM testability across all setup edge cases
+- Clean edge-to-edge Material 3 UI design
+
+Consequences:
+Positive:
+- Fluid, resilient onboarding and setup flow
+- 32 test suites / 178 unit tests passing cleanly in ~1.0 second
+- Clean debug (49,302,225 bytes) and R8 release (24,149,548 bytes) builds verified
+Negative:
+- None
+
+
 
 
 

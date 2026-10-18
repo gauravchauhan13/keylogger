@@ -67,6 +67,9 @@ interface AppContainer {
     val accessibilityEventFilter: AccessibilityEventFilter
     val accessibilityEventMapper: AccessibilityEventMapper
     val accessibilityEventPublisher: AccessibilityEventPublisher
+    val systemStatusChecker: com.example.inputmonitor.platform.system.SystemStatusChecker
+    val permissionCoordinator: com.example.inputmonitor.platform.permissions.PermissionCoordinator
+    val setupStateManager: com.example.inputmonitor.domain.setup.SetupStateManager
     val startMonitoringSessionUseCase: StartMonitoringSessionUseCase
     val pauseMonitoringSessionUseCase: PauseMonitoringSessionUseCase
     val resumeMonitoringSessionUseCase: ResumeMonitoringSessionUseCase
@@ -152,6 +155,24 @@ class DefaultAppContainer(
 
     override val accessibilityEventPublisher: AccessibilityEventPublisher by lazy {
         AccessibilityEventPublisherImpl(eventProcessor, dispatchers)
+    }
+
+    override val systemStatusChecker: com.example.inputmonitor.platform.system.SystemStatusChecker by lazy {
+        com.example.inputmonitor.platform.system.AndroidSystemStatusChecker(context, database)
+    }
+
+    override val permissionCoordinator: com.example.inputmonitor.platform.permissions.PermissionCoordinator by lazy {
+        com.example.inputmonitor.platform.permissions.PermissionCoordinatorImpl(context)
+    }
+
+    override val setupStateManager: com.example.inputmonitor.domain.setup.SetupStateManager by lazy {
+        com.example.inputmonitor.platform.system.SetupStateManagerImpl(
+            systemStatusChecker = systemStatusChecker,
+            permissionCoordinator = permissionCoordinator,
+            sessionManager = sessionManager,
+            preferencesRepository = preferencesRepository,
+            dispatchers = dispatchers
+        )
     }
 
     override val startMonitoringSessionUseCase: StartMonitoringSessionUseCase by lazy {

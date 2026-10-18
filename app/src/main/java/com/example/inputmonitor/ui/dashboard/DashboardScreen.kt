@@ -54,6 +54,7 @@ fun DashboardScreen(
     onNavigateToEvents: () -> Unit,
     onNavigateToStatistics: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToSetup: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showStartDialog by remember { mutableStateOf(false) }

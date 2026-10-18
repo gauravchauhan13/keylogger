@@ -21,9 +21,26 @@ import com.example.inputmonitor.ui.statistics.StatisticsScreen
 @Composable
 fun AppNavigation(
     modifier: Modifier = Modifier,
-    navController: NavHostController = rememberNavController(),
-    startDestination: String = Screen.Onboarding.route
+    navController: NavHostController = rememberNavController()
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val container = (context.applicationContext as com.example.inputmonitor.MonitoringApplication).container
+
+    val setupViewModel: com.example.inputmonitor.ui.setup.SetupViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+        factory = com.example.inputmonitor.ui.setup.SetupViewModel.provideFactory(
+            setupStateManager = container.setupStateManager,
+            permissionCoordinator = container.permissionCoordinator,
+            preferencesRepository = container.preferencesRepository
+        )
+    )
+
+    val setupState by setupViewModel.setupState.collectAsState()
+    val startDestination = if (setupState.isOnboardingCompleted) {
+        Screen.Dashboard.route
+    } else {
+        Screen.Onboarding.route
+    }
+
     NavHost(
         navController = navController,
         startDestination = startDestination,
@@ -39,9 +56,15 @@ fun AppNavigation(
 
         composable(Screen.Setup.route) {
             SetupScreen(
-                onNavigateToDashboard = {
-                    navController.navigate(Screen.Dashboard.route) {
-                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                setupState = setupState,
+                onOpenAccessibilitySettings = { setupViewModel.openAccessibilitySettings(context) },
+                onOpenKeyboardSettings = { setupViewModel.openKeyboardSettings(context) },
+                onShowKeyboardPicker = { setupViewModel.showKeyboardPicker(context) },
+                onCompleteSetup = {
+                    setupViewModel.completeSetup {
+                        navController.navigate(Screen.Dashboard.route) {
+                            popUpTo(Screen.Onboarding.route) { inclusive = true }
+                        }
                     }
                 }
             )
@@ -80,6 +103,9 @@ fun AppNavigation(
                 },
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
+                },
+                onNavigateToSetup = {
+                    navController.navigate(Screen.Setup.route)
                 }
             )
         }

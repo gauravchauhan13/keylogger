@@ -131,7 +131,39 @@ User selects CustomKeyboardService
    ↓
 SetupStateManager.refresh()
    ↓
-UI updates keyboard status
+```
+
+---
+
+# 5.1. Setup Verification & Partial Setup Flow
+
+```text
+Setup Screen
+   ↓
+System Verification Checklist (SRS.md §16)
+   • Permissions: Ready
+   • Accessibility: Enabled / Disabled
+   • Custom Keyboard: Enabled / Not Enabled
+   • Current Keyboard: Selected / Other Keyboard
+   • Sensitive Protection: Active
+   • Database: Ready
+   ↓
+Evaluate SetupState (Architecture.md §14, §15)
+   ├── Setup Complete (isComplete == true)
+   │      ↓
+   │   [Complete Setup & Open Dashboard]
+   │      ↓
+   │   Set onboardingCompleted = true
+   │      ↓
+   │   Navigate to Dashboard
+   │
+   └── Setup Incomplete / Skipped (isComplete == false)
+          ↓
+       [Proceed with Partial Setup] (SRS.md §17, AC-35)
+          ↓
+       Set onboardingCompleted = true
+          ↓
+       Navigate to Dashboard (Never traps or loops the user)
 ```
 
 ---

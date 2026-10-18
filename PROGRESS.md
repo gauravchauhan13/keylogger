@@ -27,11 +27,11 @@ Overall Status:
 IN PROGRESS
 
 Current Phase:
-Phase 8 complete; ready to begin Phase 9 (Unified Event Processing & Integration)
+Phase 10 complete; ready to begin Phase 11 (Dashboard)
 
 Current Objective:
-Phase 8 AccessibilityService complete: AppAccessibilityService extending Android AccessibilityService, configured with @xml/accessibility_service_config, AccessibilityEventFilter restricting to permitted categories (clicks, focus, scrolls, window changes, selections) and suppressing self-monitoring feedback loops on ownPackageName, scroll storm rate limiting (minScrollIntervalMs = 100ms), AccessibilityEventMapper enforcing Content Minimization (never captures message bodies, detects password widgets via isPassword/className and classifies as SENSITIVE_PASSWORD with null candidateData), AccessibilityEventInfo decoupled representation and adapter enabling deterministic JVM testing, AccessibilityEventPublisher asynchronously dispatching on background SupervisorJob scope, 26 unit test suites / 140 tests passing cleanly (100% pass rate in 1.63s), clean debug and R8 release builds verified.
-Ready to implement Phase 9 (Unified Event Processing & Integration).
+Phase 10 First-Run Setup complete: Welcome screen with transparent local-first disclosure (SRS.md §11, AC-02), PermissionCoordinator handling permissions and non-blocking denial (AC-03, AC-35), Accessibility enablement deep-link (AC-36), Keyboard enablement and IME selection (AC-37), System verification checklist (SRS.md §16), non-blocking partial setup progression (SRS.md §17), SetupStateManager state machine with onResume lifecycle refresh (Architecture.md §14, §15), SystemStatusChecker decoupling Android IPC for pure JVM testing, SetupViewModel, 32 unit test suites / 178 tests passing (100% pass rate in ~1.0s), clean debug (49,302,225 bytes) and R8 release (24,149,548 bytes) builds verified.
+Ready to implement Phase 11 (Dashboard).
 ```
 
 Update these values as development proceeds.
@@ -87,9 +87,9 @@ Phase-0 living documents (created and active):
 
 [✓] Phase 8  — AccessibilityService
 
-[ ] Phase 9  — Unified Event Processing
+[✓] Phase 9  — Unified Event Processing
 
-[ ] Phase 10 — First-Run Setup
+[✓] Phase 10 — First-Run Setup
 
 [ ] Phase 11 — Dashboard
 
@@ -130,13 +130,13 @@ Use:
 ## Currently Implementing
 
 ```text
-Ready to begin Phase 5 — Complete Keyboard.
+Ready to begin Phase 11 — Dashboard.
 ```
 
 ## Current Goal
 
 ```text
-Implement Phase 5: Complete keyboard layouts (Symbols layout, Numbers layout, Caps Lock indicator/state, editor-specific action keys like Go/Search/Send/Done/Next, multiline handling, context-specific adaptation).
+Implement Phase 11: Real-time system status indicators, keyboard active status, accessibility service status, session state indicator, event counters, current application context, and quick-action navigation controls.
 ```
 
 ---
@@ -296,30 +296,43 @@ Currently:
   - Verified all 27 test suites / 146 unit tests passing cleanly (100% pass rate in 1.62s)
   - Verified clean debug build (app-debug.apk: 49,141,834 bytes)
   - Verified clean release build with R8 shrinking (app-release.apk: 24,084,012 bytes)
+
+✓ Phase 10 completed:
+  - Created SetupState domain model tracking runtime permissions, accessibility, IME installed/enabled/selected, database readiness, active monitoring sessions, and onboarding completion with computed `isComplete` and `isOperational` properties (Architecture.md §14, SRS.md §16–§18, DEC-024)
+  - Created SystemStatusChecker interface and AndroidSystemStatusChecker implementation decoupling Android platform settings and services (AccessibilityManager, Settings.Secure, InputMethodManager) for deterministic JVM testing without mocking final framework APIs
+  - Created PermissionCoordinator and PermissionCoordinatorImpl providing permission check/request state machine that represents denial as application state rather than throwing exceptions or trapping the user (SRS.md §12, AC-03, AC-35)
+  - Created SetupStateManager interface and SetupStateManagerImpl observing SessionManager and PreferencesRepository, refreshing system states asynchronously on dispatchers.io, and exposing reactive StateFlow<SetupState>
+  - Integrated MainActivity onResume lifecycle hook to trigger setupStateManager.refresh(), updating status immediately when user returns from Android Settings (Architecture.md §15)
+  - Implemented SetupViewModel exposing setupState, handling settings intent launches (ACTION_ACCESSIBILITY_SETTINGS, ACTION_INPUT_METHOD_SETTINGS), IME picker invocation, and onboarding completion
+  - Built OnboardingScreen (SRS.md §11, AC-02) featuring comprehensive Welcome presentation and transparent privacy disclosure (local-only SQLCipher storage, zero INTERNET permission, automatic credential redaction)
+  - Built SetupScreen (SRS.md §12–§17, AC-36, AC-37) featuring interactive setup cards for permissions, accessibility, keyboard enablement, keyboard selection, system verification checklist, and non-blocking partial setup continuation ("Proceed with Partial Setup")
+  - Updated AppNavigation to dynamically route to Dashboard if onboarding is completed, or OnboardingScreen on fresh launch
+  - Added 5 new unit test suites: SetupStateTest (7 tests), PermissionCoordinatorTest (4 tests), SetupStateManagerTest (6 tests), SetupViewModelTest (4 tests), and SetupFlowIntegrationTest (11 tests validating all scenarios from IMPLEMENTATION_PLAN.md §49)
+  - Verified all 32 test suites / 178 unit tests passing cleanly (100% pass rate in ~1.0s)
+  - Verified clean debug build (app-debug.apk: 49,302,225 bytes)
+  - Verified clean release build with R8 shrinking (app-release.apk: 24,149,548 bytes)
 ```
 
 ---
 
 # 7. Next Tasks
 
-Next tasks for Phase 10 (First-Run Setup & Onboarding UI):
+Next tasks for Phase 11 (Dashboard):
 
 ```text
-1. Begin Phase 10 (First-Run Setup).
+1. Begin Phase 11 (Dashboard).
 
-2. Implement Welcome screen and application disclosure dialogs (SRS.md §16).
+2. Implement System Status component on Dashboard (displaying keyboard active status, accessibility service status, session state, and database status).
 
-3. Implement PermissionCoordinator to guide the user through permissions.
+3. Implement Session Status indicator with real-time state badge (ACTIVE, PAUSED, STOPPED, INACTIVE) and elapsed duration timer.
 
-4. Implement AccessibilityService enablement flow with deep-links to Android Accessibility Settings.
+4. Implement Event Counters and live breakdown (total events, keyboard keystrokes, accessibility interactions).
 
-5. Implement Custom Keyboard enablement and selection flows via InputMethodManager intents.
+5. Implement Current Application Context card showing active foreground app name and package.
 
-6. Implement Configuration Verification checking all permissions and services before entering Dashboard.
+6. Implement Quick Action controls (Start / Pause / Resume / Stop session dialogs and direct navigation to Events, Statistics, and Settings).
 
-7. Implement SetupStateManager tracking onboarding completion via DataStore.
-
-8. Update decision.md, tech.md, flow.md, and PROGRESS.md in required sequence.
+7. Update decision.md, tech.md, flow.md, and PROGRESS.md in required sequence.
 ```
 
 # 8. Current Technology
