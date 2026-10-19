@@ -593,19 +593,33 @@ User Interaction Options:
 # 13. Export Flow
 
 ```text
-User initiates export
+User selects "Export Data" from Dashboard or Navigation
    ↓
-Select session / data range
+ExportScreen displays privacy disclosure & scope selector
    ↓
-Read from encrypted Room database
+User selects scope (All Sessions or Specific Session)
    ↓
-Export Validation (re-check sensitive classifications)
+User taps "Select Destination & Export CSV"
    ↓
-CSV Writer
+Storage Access Framework (SAF) ActivityResultContracts.CreateDocument("text/csv")
    ↓
-User selects destination via SAF (Storage Access Framework)
+User chooses local destination file URI
    ↓
-Write CSV to user-selected location
+ContentResolver.openOutputStream(uri)
+   ↓
+ExportSessionUseCase (IO Dispatcher)
+   ├── CsvEventExporter.writeHeader(outputStream)
+   └── Loop: Paged batch query (CHUNK_SIZE = 250)
+         ↓
+       ExportValidator (Sanitize & redact passwords/PINs/OTPs/PANs)
+         ↓
+       CsvEventExporter.writeEvents(outputStream, sanitizedBatch)
+         ↓
+       Progress callback updates UI (exported / total)
+   ↓
+OutputStream.flush() & close()
+   ↓
+ExportResult.Success dialog displayed with record count & bytes
 ```
 
 ---
@@ -692,6 +706,7 @@ Phase 11: Dashboard Architecture & Aggregate Event Metrics (COMPLETE)
 Phase 12: Event Timeline, Paged Observation & Multi-Dimensional Filtering (COMPLETE)
 Phase 13: Database-Backed Search, Index Optimization & Debounced Query Engine (COMPLETE)
 Phase 14: Interaction Statistics Engine & UI (COMPLETE)
-Phase 15: Export Engine (NEXT)
+Phase 15: Export Engine (COMPLETE)
+Phase 16: Data Management (NEXT)
 ```
 

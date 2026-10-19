@@ -107,6 +107,9 @@ fun AppNavigation(
                 onNavigateToStatistics = {
                     navController.navigate(Screen.Statistics.route)
                 },
+                onNavigateToExport = {
+                    navController.navigate(Screen.Export.route)
+                },
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
                 },
@@ -165,6 +168,44 @@ fun AppNavigation(
                 },
                 onSetDropdownExpanded = { expanded ->
                     statisticsViewModel.setDropdownExpanded(expanded)
+                }
+            )
+        }
+
+        composable(Screen.Export.route) {
+            val exportViewModel: com.example.inputmonitor.ui.export.ExportViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                factory = com.example.inputmonitor.ui.export.ExportViewModel.provideFactory(
+                    exportSessionUseCase = container.exportSessionUseCase,
+                    sessionRepository = container.sessionRepository,
+                    eventRepository = container.eventRepository
+                )
+            )
+
+            val exportUiState by exportViewModel.uiState.collectAsState()
+
+            com.example.inputmonitor.ui.export.ExportScreen(
+                uiState = exportUiState,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onSelectSession = { sessionId ->
+                    exportViewModel.selectSession(sessionId)
+                },
+                onSetDropdownExpanded = { expanded ->
+                    exportViewModel.setSessionDropdownExpanded(expanded)
+                },
+                onExportRequested = { uri ->
+                    try {
+                        val outputStream = context.contentResolver.openOutputStream(uri)
+                        if (outputStream != null) {
+                            exportViewModel.executeExport(outputStream, uri.toString())
+                        }
+                    } catch (t: Throwable) {
+                        // Handled in ViewModel
+                    }
+                },
+                onDismissResult = {
+                    exportViewModel.dismissResult()
                 }
             )
         }

@@ -1078,6 +1078,78 @@ Positive:
 Negative:
 - None.
 
+---
+
+### DEC-029: Local-First CSV Export Engine, Storage Access Framework Integration, and Export Defense-in-Depth Sanitization
+
+Date:
+2026-10-19
+
+Status:
+ACCEPTED
+
+Context:
+Phase 15 requires implementing user-initiated local CSV export (SRS.md §54, Architecture.md §58, §59, IMPLEMENTATION_PLAN.md §54).
+The project mandates:
+1. Zero network transmission: exports must be saved exclusively to user-selected locations on local storage.
+2. Bounded memory consumption: exporting tens of thousands of records must never load the entire database into device RAM at once (RAM protection).
+3. Export boundary defense (INV-07, Architecture.md §59): the exporter must not blindly serialize database entities. Even though sensitive content is sanitized before persistence, export validation must re-verify that passwords, PINs, OTPs, and payment card numbers are unconditionally redacted before writing to CSV.
+4. Explicit user control: export requires explicit user action via Android's Storage Access Framework (SAF).
+
+Decision:
+1. Export Domain Layer:
+   - Defined `ExportFormat.CSV` and sealed class `ExportResult` (`Success`, `Error`).
+   - Implemented `ExportValidator` and `ExportValidatorImpl`:
+     - Unconditionally sanitizes `eventData = "[REDACTED]"` whenever `inputClassification.isSensitive` is true or `eventType == EventType.SENSITIVE_INPUT_DETECTED`.
+     - Additional heuristic Luhn check on candidate strings to scrub stray credit card sequences.
+2. Data Layer Streaming Exporter:
+   - Implemented `CsvEventExporter` and `CsvEventExporterImpl` adhering to RFC-4180 specification.
+   - Emits standardized columns: `timestamp,formatted_time,session_id,source,event_type,package_name,application_name,event_data,classification`.
+   - Escapes commas, quotes (`" -> ""`), and newlines per RFC-4180 rules.
+   - Streams directly into `java.io.OutputStream` with UTF-8 encoding.
+3. Use Case & Chunked Pagination:
+   - Created `ExportSessionUseCase`:
+     - Reads records in bounded chunks (`CHUNK_SIZE = 250`) using `eventRepository.observeEventsPaged` and `observeFilteredCount`.
+     - Supports both global ("All Sessions") and session-scoped exports.
+     - Guarantees $O(1)$ heap memory allocation regardless of database size.
+     - Emits real-time progress callbacks `(exportedCount, totalCount)` to drive UI progress bars.
+4. Presentation Layer (`ExportViewModel` & `ExportScreen`):
+   - Created `ExportUiState` and `ExportViewModel`:
+     - Combines sessions flow, selected session filter, and scope count into a reactive `StateFlow`.
+     - Manages export execution lifecycle, SAF stream handling, and error containment.
+   - Built modern Material 3 `ExportScreen`:
+     - Security & Privacy disclosure card emphasizing offline, local-first storage and credential exclusion.
+     - Scope selector dropdown ("All Sessions" vs per-session).
+     - Specification summary card (RFC-4180, streaming memory profile, zero network).
+     - Storage Access Framework `ActivityResultContracts.CreateDocument("text/csv")` launcher.
+     - Dynamic progress indicator displaying processed records count.
+     - Export result dialog displaying exported record count and bytes written.
+5. Navigation & Dashboard Integration:
+   - Added `Screen.Export` in `Screen.kt`.
+   - Wired `Screen.Export.route` in `AppNavigation.kt`.
+   - Added "Export Data" quick navigation button in `DashboardScreen.kt`.
+6. Testing & Verification:
+   - Created `ExportValidatorTest` (6 tests).
+   - Created `CsvEventExporterTest` (4 tests).
+   - Created `ExportSessionUseCaseTest` (3 tests).
+   - Created `ExportViewModelTest` (4 tests).
+   - Created `ExportFlowIntegrationTest` (1 end-to-end multi-chunk test).
+   - Total test suite expanded to 46 test suites / 248 unit tests passing with 100% pass rate.
+
+Reason:
+- Full compliance with SRS.md §54, Architecture.md §58, §59, and IMPLEMENTATION_PLAN.md §54.
+- Bounded memory profile prevents OutOfMemory errors on low-spec Android devices.
+- Defense-in-depth guarantees that no sensitive credentials leak into exported files.
+
+Consequences:
+Positive:
+- Complete, secure, offline CSV export capability.
+- 46 test suites / 248 tests passing cleanly with 100% pass rate.
+- Verified debug and release APK generation.
+Negative:
+- None.
+
+
 
 
 

@@ -14,6 +14,7 @@ class NavigationRoutesTest {
             Screen.Dashboard.route,
             Screen.Events.route,
             Screen.Statistics.route,
+            Screen.Export.route,
             Screen.Settings.route
         )
         val distinctRoutes = routes.distinct()
@@ -28,6 +29,7 @@ class NavigationRoutesTest {
             Screen.Dashboard,
             Screen.Events,
             Screen.Statistics,
+            Screen.Export,
             Screen.Settings
         )
         screens.forEach { screen ->

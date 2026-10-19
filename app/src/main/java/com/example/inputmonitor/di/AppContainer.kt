@@ -77,6 +77,9 @@ interface AppContainer {
     val getActiveSessionUseCase: GetActiveSessionUseCase
     val observeActiveSessionUseCase: ObserveActiveSessionUseCase
     val observeSessionStateUseCase: ObserveSessionStateUseCase
+    val exportValidator: com.example.inputmonitor.domain.export.ExportValidator
+    val csvEventExporter: com.example.inputmonitor.data.export.CsvEventExporter
+    val exportSessionUseCase: com.example.inputmonitor.domain.usecase.ExportSessionUseCase
 }
 
 /**
@@ -201,5 +204,22 @@ class DefaultAppContainer(
 
     override val observeSessionStateUseCase: ObserveSessionStateUseCase by lazy {
         ObserveSessionStateUseCase(sessionManager)
+    }
+
+    override val exportValidator: com.example.inputmonitor.domain.export.ExportValidator by lazy {
+        com.example.inputmonitor.domain.export.ExportValidatorImpl()
+    }
+
+    override val csvEventExporter: com.example.inputmonitor.data.export.CsvEventExporter by lazy {
+        com.example.inputmonitor.data.export.CsvEventExporterImpl()
+    }
+
+    override val exportSessionUseCase: com.example.inputmonitor.domain.usecase.ExportSessionUseCase by lazy {
+        com.example.inputmonitor.domain.usecase.ExportSessionUseCase(
+            eventRepository = eventRepository,
+            exportValidator = exportValidator,
+            csvEventExporter = csvEventExporter,
+            dispatchers = dispatchers
+        )
     }
 }

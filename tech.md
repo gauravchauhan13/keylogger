@@ -418,9 +418,47 @@ Room Aggregate Queries (SQLite Execution)
 
 ---
 
-## Export
+## Export Subsystem
 
-CSV (user-initiated local export)
+```text
+User Tap "Export Data" in ExportScreen
+               │
+               ▼
+  Storage Access Framework (SAF)
+  ActivityResultContracts.CreateDocument("text/csv")
+               │ (User selects local destination)
+               ▼
+  ContentResolver.openOutputStream(uri)
+               │
+               ▼
+  ExportViewModel.executeExport(outputStream)
+               │
+               ▼
+  ExportSessionUseCase (IO Dispatcher)
+    ├── CsvEventExporter.writeHeader(outputStream)
+    │     └── timestamp,formatted_time,session_id,source,event_type,package_name,application_name,event_data,classification
+    │
+    └── Chunked Streaming Loop (CHUNK_SIZE = 250)
+          │
+          ├── EventRepository.observeEventsPaged(filter, limit, offset)
+          │     └── Paged Room query (O(1) heap allocation)
+          │
+          ├── ExportValidator.sanitizeForExport(event)
+          │     ├── Sensitive classification? -> eventData = "[REDACTED]"
+          │     ├── Heuristic credit card?     -> eventData = "[REDACTED]"
+          │     └── Normal permitted event?    -> eventData preserved
+          │
+          ├── CsvEventExporter.writeEvents(outputStream, sanitizedBatch)
+          │     └── RFC-4180 escaping (commas, quotes, newlines) & UTF-8 flush
+          │
+          └── onProgress(exportedCount, totalCount)
+                └── Real-time progress bar update in UI
+```
+
+- RFC-4180 Compliance: Standardized headers, comma separation, and double-quote escaping.
+- Bounded RAM Footprint: Streamed in chunks of 250 records directly to `OutputStream`. No full database memory residency.
+- Offline Defense-in-Depth: Export boundary sanitizes all sensitive input classifications, OTPs, and Luhn-matching PANs.
+- Zero Network Transmission: Offline-only, written directly to user-chosen URI via Android SAF.
 
 ---
 

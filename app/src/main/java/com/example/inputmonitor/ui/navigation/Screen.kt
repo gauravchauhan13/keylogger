@@ -9,5 +9,6 @@ sealed class Screen(val route: String, val title: String) {
     object Dashboard : Screen("dashboard", "Dashboard")
     object Events : Screen("events", "Interaction Events")
     object Statistics : Screen("statistics", "Interaction Statistics")
+    object Export : Screen("export", "Export Data")
     object Settings : Screen("settings", "Settings")
 }

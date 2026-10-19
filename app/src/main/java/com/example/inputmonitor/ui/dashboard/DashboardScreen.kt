@@ -70,6 +70,7 @@ fun DashboardScreen(
     onRefreshSetup: () -> Unit,
     onNavigateToEvents: () -> Unit,
     onNavigateToStatistics: () -> Unit,
+    onNavigateToExport: () -> Unit = {},
     onNavigateToSettings: () -> Unit,
     onNavigateToSetup: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -391,6 +392,13 @@ fun DashboardScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                Button(
+                    onClick = onNavigateToExport,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(text = "Export Data")
+                }
                 OutlinedButton(
                     onClick = onNavigateToSettings,
                     shape = RoundedCornerShape(8.dp),
