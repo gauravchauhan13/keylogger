@@ -40,6 +40,10 @@ class CustomKeyboardService : InputMethodService() {
         return editorInfoOverride ?: runCatching { super.getCurrentInputEditorInfo() }.getOrNull()
     }
 
+    override fun onEvaluateInputViewShown(): Boolean {
+        return true
+    }
+
     override fun onCreateInputView(): View {
         val view = KeyboardView(this) { action ->
             handleKeyAction(action)

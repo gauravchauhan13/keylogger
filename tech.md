@@ -617,4 +617,31 @@ TestBenchScreen (Focus Telemetry & Ground-Truth Editors)
 
 See DEC-010.
 
+---
+
+## Android Version Compatibility & Verification Matrix (Phase 20)
+
+See DEC-035, IMPLEMENTATION_PLAN.md §62, Architecture.md §84, TESTING.md §26.
+
+| Android Version | API Level | Code Name | Verification Status | Key Architectural Findings / Behavior |
+|---|---|---|---|---|
+| **Android 12** | 31 | Snow Cone | Supported (minSdk) | Modern Keystore AES-256 GCM, Material You dynamic theming, Splash Screen API baseline. |
+| **Android 13** | 33 | Tiramisu | Supported | `POST_NOTIFICATIONS` runtime permission requirement; Predictive Back gesture support. |
+| **Android 14** | 34 | Upside Down Cake | Supported | Restricted Settings security model for sideloaded accessibility services; Setup guidance prompts user to enable restricted settings in App Info menu. |
+| **Android 15** | 35 | Vanilla Ice Cream | Target / Compile SDK | 16KB page alignment requirement in ELF native binaries (`libsqlcipher.so`); default edge-to-edge window insets in Compose. |
+| **Android 16** | 36 | Baklava | **Verified Live on Pixel 10 AVD** | ART strict JNI symbol resolution requiring explicit `System.loadLibrary("sqlcipher")` in `MonitoringApplication.onCreate()`; `CustomKeyboardService.onEvaluateInputViewShown()` override to force virtual IME rendering on emulator / hardware-keyboard attached devices. Full live session, IME typing, and sensitive suppression verified. |
+| **Android 17** | 37 | Preview | Analyzed | Background execution boundaries, content minimization, and strict credential boundary conformance preserved. |
+
+### Runtime & Native JNI Hardening Details
+
+1. **SQLCipher Native JNI Dynamic Linker**:
+   - Class: `net.zetetic.database.sqlcipher.SQLiteConnection`
+   - Native Method: `nativeOpen`
+   - Mechanism: Invoked explicitly during `MonitoringApplication.onCreate()` via `System.loadLibrary("sqlcipher")` with defensive fallback handling. Guarantees JNI symbol registration prior to background Room coroutine initialization.
+2. **IME Input View Evaluation**:
+   - Class: `com.example.inputmonitor.platform.ime.CustomKeyboardService`
+   - Method: `onEvaluateInputViewShown(): Boolean = true`
+   - Mechanism: Overrides Android framework default (which hides virtual keyboard when PC hardware keyboard is detected on emulators), ensuring consistent keyboard rendering across all environments.
+
+
 

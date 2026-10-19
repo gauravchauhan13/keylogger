@@ -27,11 +27,11 @@ Overall Status:
 IN PROGRESS
 
 Current Phase:
-Phase 18 complete; ready to begin Phase 19 (Large Database Testing)
+Phase 20 complete; ready to begin Phase 21 (Release Optimization & Validation)
 
 Current Objective:
-Phase 18 (Performance Optimization) complete: Executed dedicated optimization pass across CPU, RAM, battery, keyboard latency (<2ms), accessibility throttle protection, startup time, database indexing, and memory boundedness per IMPLEMENTATION_PLAN.md §57, §58, §59, and DEVELOPMENT_GUIDELINES.md. Bounded ContextResolver package cache at MAX_CACHE_ENTRIES = 256. Modernized Compose MenuAnchorType and icon APIs resolving deprecation warnings. Audited all 17 dependencies (zero unnecessary external libraries, zero network stack). Verified 56 test suites / 288 unit tests passing (100% pass rate in ~2.07s), clean debug (50,352,673 bytes) and R8 release (24,592,056 bytes) builds verified.
-Ready to implement Phase 19 (Large Database Testing).
+Phase 20 (Android Version Testing) complete: Deployed and tested on Pixel 10 AVD running Android 16 (API 36 / Baklava, security patch 2026-01-05). Resolved ART UnsatisfiedLinkError by adding explicit System.loadLibrary("sqlcipher") in MonitoringApplication.onCreate(). Overrode onEvaluateInputViewShown() returning true in CustomKeyboardService ensuring soft keyboard rendering with hardware/host keyboards. Verified live onboarding, encrypted Room session creation, IME typing, real-time sensitive classification (AC-30), key popup suppression, zero credential persistence, and live dashboard metrics. Implemented AndroidVersionCompatibilityTest (8 tests). 58 test suites / 305 unit tests passing (100% pass rate in ~2.79s). Clean debug and R8-minified release APK (24.59 MB) verified.
+Ready to implement Phase 21 (Release Optimization & Validation).
 ```
 
 Update these values as development proceeds.
@@ -109,9 +109,9 @@ Phase-0 living documents (created and active):
 
 [✓] Phase 19 — Large Database Testing
 
-[ ] Phase 20 — Android Version Testing
+[✓] Phase 20 — Android Version Testing
 
-[ ] Phase 21 — Release Optimization
+[ ] Phase 21 — Release Optimization & Validation
 ```
 
 Use:
@@ -130,13 +130,13 @@ Use:
 ## Currently Implementing
 
 ```text
-Ready to begin Phase 20 — Android Version Testing.
+Ready to begin Phase 21 — Release Optimization & Validation.
 ```
 
 ## Current Goal
 
 ```text
-Implement Phase 20: Test compatibility, lifecycle behaviors, IME input delivery, accessibility event mapping, and security patch differences across target Android versions (Android 15, Android 16, and Android 17 / Preview) per IMPLEMENTATION_PLAN.md §62 and TESTING.md §18.
+Implement Phase 21: Final release verification, R8 optimization review, resource shrinking audit, dead code check, release APK sanity validation, and end-to-end acceptance verification per IMPLEMENTATION_PLAN.md §63, §64, and TESTING.md §28, §30.
 ```
 
 ---
@@ -1092,6 +1092,13 @@ DEC-025: Dashboard Architecture, Aggregate Event Metrics, and Live Context Obser
 DEC-026: Event Timeline Architecture, Paged Room Observation, and Multi-Dimensional Filter Engine
 DEC-027: Database-Backed Search Architecture, Index Optimization, and Debounced Filtering Engine
 DEC-028: Aggregate Statistics Subsystem, 24-Hour Circadian Histogram Normalization, and Native Crash Hardening
+DEC-029: RFC-4180 Streaming CSV Export Engine, Storage Access Framework (SAF), and Defense-in-Depth Privacy Validation
+DEC-030: User-Controlled Data Deletion, Cascading Event Cleanup, and Two-Step Danger Zone Architecture
+DEC-031: Controlled Application Use Test Screen Architecture, Invariant Ground-Truth Verification, and Real-Time Focus Telemetry
+DEC-032: Dedicated Performance Optimization Pass, Operational Budgets, Dead Code Elimination, and Dependency Audit
+DEC-033: Large Database Scalability, SQLCipher AES-256 Storage Model, and Composite Index Optimization
+DEC-034: Android Studio Gradle JVM Alignment and Root Clean Task Registration
+DEC-035: Android Version Testing, Android 16 (Baklava API 36) Live Verification, SQLCipher ART Native JNI Linking, and IME Input View Evaluation
 ```
 
 ---
@@ -1102,7 +1109,7 @@ At the end of every session there must be ONE clearly stated next action.
 
 Current:
 
-> Begin Phase 15 (Export): Implement CSV export serialization engine, Storage Access Framework (SAF) integration, export safety re-validation, export progress and confirmation UI (Architecture.md §58, IMPLEMENTATION_PLAN.md §54, SRS.md §52).
+> Begin Phase 21 (Release Optimization & Validation): Review R8 minification, dead code elimination, resource shrinking audit, release APK sanity validation, and end-to-end acceptance criteria verification per IMPLEMENTATION_PLAN.md §63, §64, Architecture.md §98, and TESTING.md §28, §30.
 
 This prevents a future agent from guessing where to resume.
 

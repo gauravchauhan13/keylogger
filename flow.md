@@ -894,6 +894,40 @@ Cascading Deletion Flow (50,000+ Records)
 
 ---
 
+# 20. Android Version Testing & Android 16 Runtime Flow
+
+```text
+Android 16 (Baklava API 36) Application Startup & Dynamic JNI Linking Flow
+   User launches app or Android boots:
+      ↓
+   MonitoringApplication.onCreate()
+      ├── 1. System.loadLibrary("sqlcipher") [Explicit JNI Binding]
+      │        ├── Loads libsqlcipher.so from APK /data/app native library directory
+      │        ├── Binds native method symbols (SQLiteConnection.nativeOpen, etc.)
+      │        └── Prevents UnsatisfiedLinkError during subsequent Room background initialization
+      │
+      └── 2. DefaultAppContainer(applicationContext) initialization
+               ├── KeystoreKeyManager retrieves/creates database AES-256 passphrase
+               ├── SupportOpenHelperFactory configures SQLiteCipher open helper
+               └── CoroutineScope restores active monitoring session if active before reboot
+
+Android 16 IME Input View Evaluation & Hard-Keyboard Coexistence Flow
+   Target application gains focus on EditText:
+      ↓
+   Android OS invokes CustomKeyboardService:
+      ├── onStartInput(attribute, restarting) -> Updates editor context & classification
+      │
+      ├── onEvaluateInputViewShown() -> Unconditionally returns TRUE
+      │     ├── Overrides platform default (which hides virtual IME on emulators/hardware keyboards)
+      │     └── Guarantees virtual keyboard view renders across all emulator and device environments
+      │
+      ├── onCreateInputView() / onStartInputView() -> Renders KeyboardView
+      │
+      └── User taps keycap -> KeyProcessor delivers character to InputConnection synchronously
+```
+
+---
+
 # Current Implementation State
 
 ```text
@@ -917,7 +951,8 @@ Phase 16: Data Management (COMPLETE)
 Phase 17: Controlled Application Use Test Screen (COMPLETE)
 Phase 18: Performance Optimization (COMPLETE)
 Phase 19: Large Database Testing (COMPLETE)
-Phase 20: Android Version Testing (NEXT)
+Phase 20: Android Version Testing (COMPLETE)
+Phase 21: Release Optimization & Validation (NEXT)
 ```
 
 
