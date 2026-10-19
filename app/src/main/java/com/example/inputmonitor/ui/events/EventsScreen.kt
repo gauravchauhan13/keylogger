@@ -57,6 +57,8 @@ import com.example.inputmonitor.domain.model.EventSource
 import com.example.inputmonitor.domain.model.EventType
 import com.example.inputmonitor.domain.model.InputClassification
 import com.example.inputmonitor.domain.model.InteractionEvent
+import com.example.inputmonitor.domain.model.SearchSuggestion
+import com.example.inputmonitor.domain.model.SuggestionType
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -80,6 +82,7 @@ fun EventsScreen(
     onPreviousPage: () -> Unit,
     onSelectEvent: (InteractionEvent?) -> Unit,
     onSetFilterDialogVisible: (Boolean) -> Unit,
+    onApplySuggestion: (SearchSuggestion) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -146,10 +149,12 @@ fun EventsScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Search Input Row
+            // Search Input Row with Suggestions
             SearchBarSection(
-                query = uiState.filterCriteria.searchQuery ?: "",
-                onQueryChange = onSearchQueryChange
+                query = uiState.searchQueryInput.ifEmpty { uiState.filterCriteria.searchQuery ?: "" },
+                suggestions = uiState.searchSuggestions,
+                onQueryChange = onSearchQueryChange,
+                onApplySuggestion = onApplySuggestion
             )
 
             // Event Type Filter Chips Row
@@ -225,34 +230,77 @@ fun EventsScreen(
 @Composable
 private fun SearchBarSection(
     query: String,
-    onQueryChange: (String) -> Unit
+    suggestions: List<SearchSuggestion>,
+    onQueryChange: (String) -> Unit,
+    onApplySuggestion: (SearchSuggestion) -> Unit
 ) {
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        placeholder = { Text(text = "Search app name, package, or data...") },
-        leadingIcon = {
-            Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = "Search"
-            )
-        },
-        trailingIcon = {
-            if (query.isNotEmpty()) {
-                IconButton(onClick = { onQueryChange("") }) {
-                    Icon(
-                        imageVector = Icons.Default.Clear,
-                        contentDescription = "Clear Search"
-                    )
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+    ) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text(text = "Search app, package, type, session, data...") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search"
+                )
+            },
+            trailingIcon = {
+                if (query.isNotEmpty()) {
+                    IconButton(onClick = { onQueryChange("") }) {
+                        Icon(
+                            imageVector = Icons.Default.Clear,
+                            contentDescription = "Clear Search"
+                        )
+                    }
+                }
+            },
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp)
+        )
+
+        if (suggestions.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(6.dp))
+            val suggestionScrollState = rememberScrollState()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(suggestionScrollState),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Suggestions:",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                suggestions.forEach { suggestion ->
+                    val badgeLabel = when (suggestion.type) {
+                        SuggestionType.APPLICATION -> "App: ${suggestion.query}"
+                        SuggestionType.PACKAGE -> "Pkg: ${suggestion.query.substringAfterLast('.')}"
+                        SuggestionType.EVENT_TYPE -> "Type: ${suggestion.query}"
+                    }
+                    Surface(
+                        modifier = Modifier.clickable { onApplySuggestion(suggestion) },
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                    ) {
+                        Text(
+                            text = badgeLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
                 }
             }
-        },
-        singleLine = true,
-        shape = RoundedCornerShape(12.dp)
-    )
+        }
+    }
 }
 
 @Composable

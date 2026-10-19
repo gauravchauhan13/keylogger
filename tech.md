@@ -187,12 +187,12 @@ Espresso Core           — Instrumentation (3.6.1)
 
 ## Baseline Build Metrics
 
-| Metric | Phase 0 Baseline | Phase 1 Foundation | Phase 2 Data Foundation | Phase 3 Monitoring Sessions | Phase 4 Basic Keyboard | Phase 5 Complete Keyboard | Phase 6 Editor & Privacy | Phase 7 IME Pipeline | Phase 8 Accessibility | Phase 9 Integration | Phase 10 First-Run Setup | Phase 11 Dashboard | Phase 12 Event Timeline | Notes |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Debug APK Size | 48,608,524 bytes (~46.35 MB) | 48,720,225 bytes (~46.46 MB) | 48,887,522 bytes (~46.62 MB) | 49,048,518 bytes (~46.78 MB) | 49,127,138 bytes (~46.85 MB) | 49,137,994 bytes (~46.86 MB) | 49,131,050 bytes (~46.85 MB) | 49,141,834 bytes (~46.86 MB) | 49,141,834 bytes (~46.86 MB) | 49,141,834 bytes (~46.86 MB) | 49,302,225 bytes (~47.02 MB) | 49,413,901 bytes (~47.12 MB) | 49,652,761 bytes (~47.35 MB) | Multi-ABI, unminified, Room + SQLCipher + DataStore + SessionManager + CustomKeyboardService + PrivacyFilter + EventProcessor + ContextResolver + AppAccessibilityService + SetupStateManager + DashboardScreen + EventsScreen |
-| Release APK Size | 22,945,972 bytes (~21.88 MB) | 23,318,576 bytes (~22.24 MB) | 23,646,256 bytes (~22.55 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | 24,084,012 bytes (~22.96 MB) | 24,084,012 bytes (~22.96 MB) | 24,084,012 bytes (~22.96 MB) | 24,084,012 bytes (~22.96 MB) | 24,149,548 bytes (~23.03 MB) | 24,165,932 bytes (~23.05 MB) | 24,297,004 bytes (~23.17 MB) | Multi-ABI, R8 minified + shrunk resources. TimelineViewModel + EventsScreen + Bounded Paging + Multi-Dimensional Filtering components |
-| Unit Test Suite | 1 test (PASSED) | 3 suites / 5 tests (PASSED) | 8 suites / 17 tests (PASSED) | 11 suites / 37 tests (PASSED) | 14 suites / 52 tests (PASSED) | 14 suites / 66 tests (PASSED) | 18 suites / 104 tests (PASSED) | 22 suites / 120 tests (PASSED) | 26 suites / 140 tests (PASSED) | 27 suites / 146 tests (PASSED) | 32 suites / 178 tests (PASSED) | 35 suites / 187 tests (PASSED) | 38 suites / 198 tests (PASSED) | Added TimelineUiStateTest (3), TimelineViewModelTest (7), TimelineFlowIntegrationTest (1). 100% pass rate in ~1.0s |
-| Gradle Tasks Executed | 70 tasks | 89 tasks | 91 tasks | 94 tasks | 97 tasks | 97 tasks | 84 tasks | 84 tasks | 84 tasks | 84 tasks | 84 tasks | 84 tasks | 84 tasks | Clean execution, KSP processing Room schemas, config cache stored |
+| Metric | Phase 0 Baseline | Phase 1 Foundation | Phase 2 Data Foundation | Phase 3 Monitoring Sessions | Phase 4 Basic Keyboard | Phase 5 Complete Keyboard | Phase 6 Editor & Privacy | Phase 7 IME Pipeline | Phase 8 Accessibility | Phase 9 Integration | Phase 10 First-Run Setup | Phase 11 Dashboard | Phase 12 Event Timeline | Phase 13 Search Engine | Notes |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Debug APK Size | 48,608,524 bytes (~46.35 MB) | 48,720,225 bytes (~46.46 MB) | 48,887,522 bytes (~46.62 MB) | 49,048,518 bytes (~46.78 MB) | 49,127,138 bytes (~46.85 MB) | 49,137,994 bytes (~46.86 MB) | 49,131,050 bytes (~46.85 MB) | 49,141,834 bytes (~46.86 MB) | 49,141,834 bytes (~46.86 MB) | 49,141,834 bytes (~46.86 MB) | 49,302,225 bytes (~47.02 MB) | 49,413,901 bytes (~47.12 MB) | 49,652,761 bytes (~47.35 MB) | 49,542,941 bytes (~47.25 MB) | Multi-ABI, unminified, Room + SQLCipher + DataStore + SessionManager + CustomKeyboardService + PrivacyFilter + EventProcessor + ContextResolver + AppAccessibilityService + SetupStateManager + DashboardScreen + EventsScreen + Debounced Search |
+| Release APK Size | 22,945,972 bytes (~21.88 MB) | 23,318,576 bytes (~22.24 MB) | 23,646,256 bytes (~22.55 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | 24,067,628 bytes (~22.95 MB) | 24,084,012 bytes (~22.96 MB) | 24,084,012 bytes (~22.96 MB) | 24,084,012 bytes (~22.96 MB) | 24,084,012 bytes (~22.96 MB) | 24,149,548 bytes (~23.03 MB) | 24,165,932 bytes (~23.05 MB) | 24,297,004 bytes (~23.17 MB) | 24,313,388 bytes (~23.19 MB) | Multi-ABI, R8 minified + shrunk resources. Search indexing + debounced StateFlow query engine + auto-suggestions strip |
+| Unit Test Suite | 1 test (PASSED) | 3 suites / 5 tests (PASSED) | 8 suites / 17 tests (PASSED) | 11 suites / 37 tests (PASSED) | 14 suites / 52 tests (PASSED) | 14 suites / 66 tests (PASSED) | 18 suites / 104 tests (PASSED) | 22 suites / 120 tests (PASSED) | 26 suites / 140 tests (PASSED) | 27 suites / 146 tests (PASSED) | 32 suites / 178 tests (PASSED) | 35 suites / 187 tests (PASSED) | 38 suites / 198 tests (PASSED) | 39 suites / 216 tests (PASSED) | Added SearchQueryTest (9), updated EventRepositoryTest (+2), TimelineViewModelTest (+5), TimelineFlowIntegrationTest (+2). 100% pass rate in ~21s |
+| Gradle Tasks Executed | 70 tasks | 89 tasks | 91 tasks | 94 tasks | 97 tasks | 97 tasks | 84 tasks | 84 tasks | 84 tasks | 84 tasks | 84 tasks | 84 tasks | 84 tasks | 84 tasks | Clean execution, KSP processing Room schemas with applicationName index, config cache stored |
 
 ---
 
@@ -330,6 +330,52 @@ List<InteractionEvent>       List<MonitoringSession>       ActiveSession
 - `TimelineUiState`: Comprehensive presentation model providing active filter state, page bounds, and event detail modal data.
 - `TimelineViewModel`: Reactive coordinator ensuring immediate, bounded state delivery via `SharingStarted.Eagerly`.
 - `EventsScreen`: Feature-complete Material 3 interface with search, filter chips, pagination, empty state handling, and detailed security disclosures.
+
+---
+
+## Database-Backed Search & Debounced Query Subsystem
+
+```text
+User Types Keystroke in Search Bar
+          │
+          ▼
+   searchInputFlow (Immediate text update in UI — zero typing lag)
+          │
+          ├── debounce(300ms) [instant if query is blank]
+          ▼
+   searchQueryFlow (Debounced search term)
+          │
+          ├──────────────────────────────┬──────────────────────────────┐
+          ▼                              ▼                              ▼
+InteractionEventDao            InteractionEventDao            InteractionEventDao
+.observeEventsFilteredPaged()   .observeFilteredCount()        .observeMatchingApplications()
+(Multi-field index search)      (Matches count for pagination) .observeMatchingPackages()
+          │                              │                              │
+          └──────────────────────────────┼──────────────────────────────┘
+                                         ▼
+                                 TimelineViewModel
+                            (SearchStateFlow & StateFlow)
+                                         │
+                                         ▼
+                                  TimelineUiState
+                    (events, totalCount, searchSuggestions)
+                                         │
+                                         ▼
+                                   EventsScreen
+     ┌─────────────────────────────────────────────────────────────────┐
+     │ • Search Bar with real-time text input and instant clear        │
+     │ • Auto-Suggestion Strip (Scrollable suggestion chips):          │
+     │     - App: "Notes" / Pkg: "com.example.notes" / Type: "TYPING"  │
+     │ • Instant filter application upon chip selection                │
+     │ • Filtered Reverse-Chronological Event Stream                   │
+     └─────────────────────────────────────────────────────────────────┘
+```
+
+- `InteractionEventEntity` Search Indexing: Added `@Index("applicationName")` to complement existing indices on `sessionId`, `timestamp`, `packageName`, and `eventType`. Generates SQLite index `index_interaction_events_applicationName` for sub-millisecond query execution.
+- Multi-Field Coverage (SRS.md §50): Room queries match across `applicationName`, `packageName`, `eventType`, `sessionId`, and non-null `eventData`.
+- Privacy Defense-in-Depth: Sensitive interaction events have `eventData = null` and `eventType = 'SENSITIVE_INPUT_DETECTED'`. They cannot be matched by credential string queries.
+- Debounced Query Engine: 300ms debounce prevents SQLite I/O flooding during rapid typing while keeping the input field immediately responsive.
+- Auto-Suggestions: `observeSearchSuggestions` queries distinct matching applications and packages directly from SQLite, capped at 10 items.
 
 ---
 

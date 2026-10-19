@@ -33,6 +33,12 @@ interface EventRepository {
         filter: com.example.inputmonitor.domain.model.EventFilterCriteria
     ): Flow<Int>
     fun observeDistinctPackageNames(): Flow<List<String>>
+    fun observeMatchingApplications(query: String, limit: Int = 5): Flow<List<String>> =
+        kotlinx.coroutines.flow.flowOf(emptyList())
+    fun observeMatchingPackages(query: String, limit: Int = 5): Flow<List<String>> =
+        kotlinx.coroutines.flow.flowOf(emptyList())
+    fun observeSearchSuggestions(query: String, limit: Int = 5): Flow<List<com.example.inputmonitor.domain.model.SearchSuggestion>> =
+        kotlinx.coroutines.flow.flowOf(emptyList())
     suspend fun deleteEventsForSession(sessionId: String): Boolean
     suspend fun deleteAllEvents(): Boolean
 }

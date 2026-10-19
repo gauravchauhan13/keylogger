@@ -27,11 +27,11 @@ Overall Status:
 IN PROGRESS
 
 Current Phase:
-Phase 12 complete; ready to begin Phase 13 (Search)
+Phase 13 complete; ready to begin Phase 14 (Statistics)
 
 Current Objective:
-Phase 12 Event Timeline complete: Chronological reverse-ordered event viewer (`timestamp DESC`), bounded heap memory consumption via Room pagination (`LIMIT 50 OFFSET 50*page`), multi-dimensional filter engine (search query, event type chips, source filter, package filter, session filter, classification filter), Event Detail dialog with complete interaction metadata and explicit privacy notice for sensitive suppressed credentials, 38 unit test suites / 198 tests passing (100% pass rate in ~1.0s), clean debug (49,652,761 bytes) and R8 release (24,297,004 bytes) builds verified.
-Ready to implement Phase 13 (Search).
+Phase 13 (Search) complete: Database-backed search across permitted application fields (applicationName, packageName, eventType, sessionId, non-null eventData) per SRS.md §50, SQLite index acceleration via index_interaction_events_applicationName, distinct search suggestions directly from Room, 300ms debounced search engine in TimelineViewModel preventing SQLite I/O flooding while maintaining zero-lag UI keystroke responsiveness, suggestion chips strip in EventsScreen, and privacy defense-in-depth guarantee (sensitive events have null eventData and are never searchable). 39 unit test suites / 216 tests passing (100% pass rate in ~21s), clean debug (49,542,941 bytes) and R8 release (24,313,388 bytes) builds verified.
+Ready to implement Phase 14 (Statistics).
 ```
 
 Update these values as development proceeds.
@@ -91,11 +91,11 @@ Phase-0 living documents (created and active):
 
 [✓] Phase 10 — First-Run Setup
 
-[ ] Phase 11 — Dashboard
+[✓] Phase 11 — Dashboard
 
-[ ] Phase 12 — Event Timeline
+[✓] Phase 12 — Event Timeline
 
-[ ] Phase 13 — Search
+[✓] Phase 13 — Search
 
 [ ] Phase 14 — Statistics
 
@@ -130,13 +130,13 @@ Use:
 ## Currently Implementing
 
 ```text
-Ready to begin Phase 11 — Dashboard.
+Ready to begin Phase 14 — Statistics.
 ```
 
 ## Current Goal
 
 ```text
-Implement Phase 11: Real-time system status indicators, keyboard active status, accessibility service status, session state indicator, event counters, current application context, and quick-action navigation controls.
+Implement Phase 14: Aggregate interaction statistics engine, session-specific and global metric computations, hourly activity distribution analysis, application breakdown, and Material 3 Statistics screen.
 ```
 
 ---
@@ -336,26 +336,47 @@ Currently:
   - Verified all 38 test suites / 198 unit tests passing cleanly (100% pass rate in ~1.0s)
   - Verified clean debug build (app-debug.apk: 49,652,761 bytes)
   - Verified clean release build with R8 shrinking (app-release.apk: 24,297,004 bytes)
+✓ Phase 13 completed:
+  - Added Room @Index("applicationName") to InteractionEventEntity alongside existing indices, generating index_interaction_events_applicationName for accelerated search (DEC-027)
+  - Expanded observeEventsFilteredPaged and observeFilteredCount in InteractionEventDao to match across all permitted fields: applicationName, packageName, eventType, sessionId, and non-null eventData (SRS.md §50)
+  - Enforced strict defense-in-depth: sensitive events have eventData = null and are never matched or revealed by credential query strings
+  - Implemented observeMatchingApplications and observeMatchingPackages in InteractionEventDao providing distinct search suggestions directly from SQLite
+  - Created SearchSuggestion domain model (query, SuggestionType: APPLICATION, PACKAGE, EVENT_TYPE) and exposed observeSearchSuggestions through EventRepository & EventRepositoryImpl
+  - Implemented debounced query engine in TimelineViewModel: raw searchInputFlow updates UI immediately (zero typing lag), while searchQueryFlow applies 300ms debounce before executing Room queries
+  - Implemented instant filter application on clearing or suggestion tap (applySuggestion)
+  - Built horizontal search suggestion chips strip in EventsScreen with category badges (App: ..., Pkg: ..., Type: ...)
+  - Added SearchQueryTest (9 tests) verifying search criteria, index generation, suggestion ranking, and credential defense-in-depth
+  - Updated EventRepositoryTest (+2 tests), TimelineViewModelTest (+5 debounce/suggestion tests), and TimelineFlowIntegrationTest (+2 tests)
+  - Verified all 39 test suites / 216 unit tests passing cleanly (100% pass rate in ~21s)
+  - Verified clean debug build (app-debug.apk: 49,542,941 bytes)
+  - Verified clean release build with R8 shrinking (app-release.apk: 24,313,388 bytes)
 ```
 
 ---
 
 # 7. Next Tasks
 
-Next tasks for Phase 13 (Search):
+Next tasks for Phase 14 (Statistics):
 
 ```text
-1. Begin Phase 13 (Search).
+1. Begin Phase 14 (Statistics) per IMPLEMENTATION_PLAN.md §53, SRS.md §51, and Architecture.md §57.
 
-2. Review search query execution plans and database index utilization for interaction_events (packageName, eventType, timestamp, applicationName).
+2. Design and implement Room SQL aggregate queries in InteractionEventDao for:
+   - Global and per-session aggregate metrics (total events, keyboard typing count, accessibility interaction count, distinct applications count).
+   - Application breakdown (per-package event counts, percentage share, top active applications).
+   - Hourly activity distribution (events per hour of day 0–23 for circadian analysis).
 
-3. Implement dedicated search indexing or FTS (Full-Text Search) integration where appropriate for permitted application info without indexing sensitive fields.
+3. Create domain models in domain/model/ (InteractionStatistics, AppUsageStats, HourlyDistribution).
 
-4. Implement debounced search input handling in ViewModel to minimize database churn during rapid keystrokes.
+4. Expose statistics flows and suspend queries in EventRepository and EventRepositoryImpl.
 
-5. Implement search history and search suggestions for recorded application packages and sessions.
+5. Implement StatisticsViewModel coordinating reactive statistics observation, session selection, and time-range filtering.
 
-6. Update decision.md, tech.md, flow.md, and PROGRESS.md in required sequence.
+6. Build Material 3 StatisticsScreen displaying metrics cards, application distribution list/bars, and hourly activity visualization.
+
+7. Write comprehensive unit and integration tests for statistics calculations and UI state.
+
+8. Update decision.md, tech.md, flow.md, and PROGRESS.md in required sequence.
 ```
 
 # 8. Current Technology
@@ -533,7 +554,7 @@ EXCLUDED — allowBackup=false and data_extraction_rules exclude database files 
 
 ```text
 Unit tests:
-ACTIVE — 38 test suites / 198 tests passing:
+ACTIVE — 39 test suites / 216 tests passing:
   - SanityTest (1 test)
   - DispatcherProviderTest (1 test)
   - NavigationRoutesTest (1 test)
@@ -541,7 +562,7 @@ ACTIVE — 38 test suites / 198 tests passing:
   - EventMapperTest (3 tests)
   - RepositorySafetyValidationTest (3 tests)
   - SessionRepositoryTest (3 tests)
-  - EventRepositoryTest (6 tests)
+  - EventRepositoryTest (8 tests)
   - SessionManagerTest (9 tests)
   - SessionGateTest (4 tests)
   - SessionUseCasesTest (5 tests)
@@ -570,14 +591,15 @@ ACTIVE — 38 test suites / 198 tests passing:
   - DashboardViewModelTest (6 tests)
   - DashboardFlowIntegrationTest (1 test)
   - TimelineUiStateTest (3 tests)
-  - TimelineViewModelTest (7 tests)
-  - TimelineFlowIntegrationTest (1 test)
+  - TimelineViewModelTest (12 tests)
+  - TimelineFlowIntegrationTest (3 tests)
+  - SearchQueryTest (9 tests)
 
 Database tests:
 ACTIVE — DAO/Repository unit tests operational
 
 Privacy tests:
-ACTIVE — All privacy tests passing (EditorInfoAnalyzerTest, SensitiveInputDetectorTest, PrivacyFilterTest, PrivacyDefenseInDepthTest, RepositorySafetyValidationTest)
+ACTIVE — All privacy tests passing (EditorInfoAnalyzerTest, SensitiveInputDetectorTest, PrivacyFilterTest, PrivacyDefenseInDepthTest, RepositorySafetyValidationTest, SearchQueryTest)
 
 Sessions tests:
 ACTIVE — SessionManager, SessionGate, and SessionUseCases verified
@@ -621,14 +643,14 @@ Legend:
 
 # 14. Current Performance Baseline
 
-Measured during Phase 12 Event Timeline:
+Measured during Phase 13 Search:
 
 ```text
 Debug APK size:
-49,652,761 bytes (~47.35 MB) — multi-ABI unminified with Room, SQLCipher, SessionManager, CustomKeyboardService, complete multi-layout engine, PrivacyFilter, EventProcessor, ContextResolver, AppAccessibilityService, SetupStateManager, DashboardScreen, EventsScreen
+49,542,941 bytes (~47.25 MB) — multi-ABI unminified with Room, SQLCipher, SessionManager, CustomKeyboardService, complete multi-layout engine, PrivacyFilter, EventProcessor, ContextResolver, AppAccessibilityService, SetupStateManager, DashboardScreen, EventsScreen, debounced search query engine
 
 Release APK size:
-24,297,004 bytes (~23.17 MB) — multi-ABI, R8 minified + shrunk resources
+24,313,388 bytes (~23.19 MB) — multi-ABI, R8 minified + shrunk resources
 
 Cold startup:
 TBD (measured on physical/virtual device)
@@ -677,7 +699,7 @@ Build:
 testDebugUnitTest + assembleDebug + assembleRelease
 
 Type:
-Full verification build (Debug APK + Release APK + 38 Unit test suites / 198 tests)
+Full verification build (Debug APK + Release APK + 39 Unit test suites / 216 tests)
 
 Date:
 2026-10-19
@@ -1006,6 +1028,7 @@ DEC-023: Unified Event Processing and Concurrent Ingestion Integration
 DEC-024: First-Run Setup State Machine, Decoupled System Status Checking, and Non-Blocking Partial Setup
 DEC-025: Dashboard Architecture, Aggregate Event Metrics, and Live Context Observation
 DEC-026: Event Timeline Architecture, Paged Room Observation, and Multi-Dimensional Filter Engine
+DEC-027: Database-Backed Search Architecture, Index Optimization, and Debounced Filtering Engine
 ```
 
 ---
@@ -1016,7 +1039,7 @@ At the end of every session there must be ONE clearly stated next action.
 
 Current:
 
-> Begin Phase 13 (Search): Implement efficient database-backed search for permitted application fields with debounce query support, FTS / indexed query optimizations, and dedicated search suggestions (Architecture.md §56, IMPLEMENTATION_PLAN.md §52, SRS.md §50).
+> Begin Phase 14 (Statistics): Implement aggregate metrics engine, application interaction breakdown, hourly activity distribution, and interactive Statistics screen (Architecture.md §57, IMPLEMENTATION_PLAN.md §53, SRS.md §51).
 
 This prevents a future agent from guessing where to resume.
 

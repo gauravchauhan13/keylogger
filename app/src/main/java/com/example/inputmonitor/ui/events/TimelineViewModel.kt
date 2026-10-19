@@ -9,24 +9,31 @@ import com.example.inputmonitor.domain.model.EventType
 import com.example.inputmonitor.domain.model.InputClassification
 import com.example.inputmonitor.domain.model.InteractionEvent
 import com.example.inputmonitor.domain.model.MonitoringSession
+import com.example.inputmonitor.domain.model.SearchSuggestion
+import com.example.inputmonitor.domain.model.SuggestionType
 import com.example.inputmonitor.domain.repository.EventRepository
 import com.example.inputmonitor.domain.repository.SessionRepository
 import com.example.inputmonitor.domain.usecase.ObserveActiveSessionUseCase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel for the interaction event timeline screen (Architecture.md §56, SRS.md §48, §49).
+ * ViewModel for the interaction event timeline screen (Architecture.md §56, SRS.md §48–§50).
  *
- * Implements bounded RAM consumption via paginated Room queries (AC-23, AC-24).
+ * Implements bounded RAM consumption via paginated Room queries (AC-23, AC-24)
+ * and debounced database-backed search filtering with auto-suggestions (IMPLEMENTATION_PLAN.md §52).
  */
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 class TimelineViewModel(
     private val eventRepository: EventRepository,
     private val sessionRepository: SessionRepository,
@@ -39,6 +46,16 @@ class TimelineViewModel(
     private val pageFlow = MutableStateFlow(0)
     private val selectedEventFlow = MutableStateFlow<InteractionEvent?>(null)
     private val isFilterDialogVisibleFlow = MutableStateFlow(false)
+    private val searchInputFlow = MutableStateFlow("")
+
+    private val searchSuggestionsFlow = searchInputFlow.flatMapLatest { input ->
+        val trimmed = input.trim()
+        if (trimmed.isEmpty()) {
+            flowOf(emptyList())
+        } else {
+            eventRepository.observeSearchSuggestions(trimmed, limit = 5)
+        }
+    }
 
     private val pagedEventsFlow = combine(filterFlow, pageFlow) { filter, page ->
         filter to page
@@ -66,7 +83,9 @@ class TimelineViewModel(
         val sessions: List<MonitoringSession>,
         val activeSession: MonitoringSession?,
         val selectedEvent: InteractionEvent?,
-        val isFilterDialogVisible: Boolean
+        val isFilterDialogVisible: Boolean,
+        val searchInput: String,
+        val searchSuggestions: List<SearchSuggestion>
     )
 
     private val eventsPagingStateFlow = combine(
@@ -78,19 +97,45 @@ class TimelineViewModel(
         EventsPagingState(events, count, filter, page)
     }
 
+    private data class DialogSelectionState(
+        val selectedEvent: InteractionEvent?,
+        val isFilterDialogVisible: Boolean
+    )
+
+    private val dialogSelectionFlow = combine(
+        selectedEventFlow,
+        isFilterDialogVisibleFlow
+    ) { selected, isVisible ->
+        DialogSelectionState(selected, isVisible)
+    }
+
+    private data class SearchState(
+        val queryInput: String,
+        val suggestions: List<SearchSuggestion>
+    )
+
+    private val searchStateFlow = combine(
+        searchInputFlow,
+        searchSuggestionsFlow
+    ) { input, suggestions ->
+        SearchState(input, suggestions)
+    }
+
     private val auxiliaryStateFlow = combine(
         eventRepository.observeDistinctPackageNames(),
         sessionRepository.observeAllSessions(),
         observeActiveSessionUseCase(),
-        selectedEventFlow,
-        isFilterDialogVisibleFlow
-    ) { packages, sessions, activeSession, selectedEvent, isFilterDialogVisible ->
+        dialogSelectionFlow,
+        searchStateFlow
+    ) { packages, sessions, activeSession, dialogState, searchState ->
         AuxiliaryState(
             packages = packages,
             sessions = sessions,
             activeSession = activeSession,
-            selectedEvent = selectedEvent,
-            isFilterDialogVisible = isFilterDialogVisible
+            selectedEvent = dialogState.selectedEvent,
+            isFilterDialogVisible = dialogState.isFilterDialogVisible,
+            searchInput = searchState.queryInput,
+            searchSuggestions = searchState.suggestions
         )
     }
 
@@ -108,13 +153,32 @@ class TimelineViewModel(
             currentPage = paging.page,
             pageSize = pageSize,
             selectedEventForDetail = aux.selectedEvent,
-            isFilterDialogVisible = aux.isFilterDialogVisible
+            isFilterDialogVisible = aux.isFilterDialogVisible,
+            searchQueryInput = aux.searchInput,
+            searchSuggestions = aux.searchSuggestions
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
         initialValue = TimelineUiState(pageSize = pageSize)
     )
+
+    init {
+        viewModelScope.launch {
+            searchInputFlow
+                .debounce { query ->
+                    if (query.isBlank()) 0L else 300L
+                }
+                .distinctUntilChanged()
+                .collect { debouncedQuery ->
+                    val safeQuery = if (debouncedQuery.isBlank()) null else debouncedQuery.trim()
+                    if (filterFlow.value.searchQuery != safeQuery) {
+                        filterFlow.value = filterFlow.value.copy(searchQuery = safeQuery)
+                        pageFlow.value = 0
+                    }
+                }
+        }
+    }
 
     fun setSessionFilter(sessionId: String?) {
         filterFlow.value = filterFlow.value.copy(sessionId = sessionId)
@@ -141,10 +205,53 @@ class TimelineViewModel(
         pageFlow.value = 0
     }
 
+    /**
+     * Updates the raw search text in real-time. Debounced 300ms propagation to database query.
+     */
+    fun onSearchQueryInputChanged(query: String) {
+        searchInputFlow.value = query
+        if (query.isBlank()) {
+            filterFlow.value = filterFlow.value.copy(searchQuery = null)
+            pageFlow.value = 0
+        }
+    }
+
+    /**
+     * Immediately applies a search query to the filter engine without debouncing delay.
+     */
     fun setSearchQuery(query: String?) {
         val safeQuery = if (query.isNullOrBlank()) null else query.trim()
+        searchInputFlow.value = query ?: ""
         filterFlow.value = filterFlow.value.copy(searchQuery = safeQuery)
         pageFlow.value = 0
+    }
+
+    /**
+     * Applies an auto-complete search suggestion directly to the active filters.
+     */
+    fun applySuggestion(suggestion: SearchSuggestion) {
+        when (suggestion.type) {
+            SuggestionType.APPLICATION -> {
+                setSearchQuery(suggestion.query)
+            }
+            SuggestionType.PACKAGE -> {
+                setPackageFilter(suggestion.query)
+                searchInputFlow.value = ""
+                filterFlow.value = filterFlow.value.copy(searchQuery = null)
+                pageFlow.value = 0
+            }
+            SuggestionType.EVENT_TYPE -> {
+                try {
+                    val eventType = EventType.valueOf(suggestion.query)
+                    setEventTypeFilter(eventType)
+                } catch (_: Exception) {
+                    setSearchQuery(suggestion.query)
+                }
+                searchInputFlow.value = ""
+                filterFlow.value = filterFlow.value.copy(searchQuery = null)
+                pageFlow.value = 0
+            }
+        }
     }
 
     fun setTimeRange(startTime: Long?, endTime: Long?) {
@@ -153,6 +260,7 @@ class TimelineViewModel(
     }
 
     fun clearFilters() {
+        searchInputFlow.value = ""
         filterFlow.value = EventFilterCriteria()
         pageFlow.value = 0
     }

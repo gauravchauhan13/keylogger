@@ -125,7 +125,7 @@ fun AppNavigation(
             EventsScreen(
                 uiState = timelineUiState,
                 onNavigateBack = { navController.popBackStack() },
-                onSearchQueryChange = { timelineViewModel.setSearchQuery(it) },
+                onSearchQueryChange = { timelineViewModel.onSearchQueryInputChanged(it) },
                 onEventTypeFilterChange = { timelineViewModel.setEventTypeFilter(it) },
                 onSourceFilterChange = { timelineViewModel.setSourceFilter(it) },
                 onPackageFilterChange = { timelineViewModel.setPackageFilter(it) },
@@ -135,7 +135,8 @@ fun AppNavigation(
                 onNextPage = { timelineViewModel.nextPage() },
                 onPreviousPage = { timelineViewModel.previousPage() },
                 onSelectEvent = { timelineViewModel.selectEvent(it) },
-                onSetFilterDialogVisible = { timelineViewModel.setFilterDialogVisible(it) }
+                onSetFilterDialogVisible = { timelineViewModel.setFilterDialogVisible(it) },
+                onApplySuggestion = { timelineViewModel.applySuggestion(it) }
             )
         }
 

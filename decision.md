@@ -948,6 +948,66 @@ Positive:
 Negative:
 - None.
 
+---
+
+### DEC-027: Database-Backed Search Architecture, Index Optimization, and Debounced Filtering Engine
+
+Date:
+2026-10-19
+
+Status:
+ACCEPTED
+
+Context:
+Phase 13 requires implementing efficient database-backed search across permitted application information (Package, Application, Event type, Session, and Permitted synthetic test input) per SRS.md §50, Architecture.md §56, and IMPLEMENTATION_PLAN.md §52.
+Searching without debouncing floods SQLite/Room queries on every keystroke, degrading UI responsiveness and CPU/battery performance.
+Furthermore, in-memory searches on large event histories exhaust heap memory, violating RAM constraints.
+Search queries must also strictly adhere to the project's zero-credential persistence guarantee (SECURITY.md §4, DEC-015): sensitive event data (`eventData = null`) must never be matched or exposed.
+
+Decision:
+1. Index Optimization in `InteractionEventEntity`:
+   - Added Room `@Index("applicationName")` to complement existing indices on `sessionId`, `timestamp`, `packageName`, and `eventType`.
+   - Verified that KSP Room compilation generates SQLite index `index_interaction_events_applicationName` on table `interaction_events`.
+2. Expanded Search Coverage in `InteractionEventDao`:
+   - Updated `observeEventsFilteredPaged` and `observeFilteredCount` to search across all permitted fields defined in SRS.md §50:
+     - `packageName LIKE '%' || :searchQuery || '%'`
+     - `applicationName LIKE '%' || :searchQuery || '%'`
+     - `eventType LIKE '%' || :searchQuery || '%'`
+     - `sessionId LIKE '%' || :searchQuery || '%'`
+     - `eventData IS NOT NULL AND eventData LIKE '%' || :searchQuery || '%'`
+   - Preserves strict defense-in-depth: sensitive events have null `eventData` and can never be matched by credential string queries.
+3. Database-Backed Search Suggestions in `InteractionEventDao`:
+   - Implemented `observeMatchingApplications(query, limit)` and `observeMatchingPackages(query, limit)` returning distinct matching records directly from SQLite.
+4. Repository Abstraction in `EventRepository` & `EventRepositoryImpl`:
+   - Exposed `observeMatchingApplications`, `observeMatchingPackages`, and unified `observeSearchSuggestions` emitting `SearchSuggestion(query, type)`.
+   - Provided default empty implementations in `EventRepository` interface for modularity and test isolation.
+5. Reactive Debounced Querying in `TimelineViewModel`:
+   - Maintained real-time raw text input `searchInputFlow` for instant UI feedback (zero typing lag).
+   - Implemented 300ms query debouncing (`debounce { if (query.isBlank()) 0L else 300L }`) before propagating search filters to Room.
+   - Immediate filter application on clear or suggestion selection (`applySuggestion`).
+6. UI Auto-Suggestion Strip in `EventsScreen`:
+   - Integrated horizontally scrolling search suggestion chips with badges (`App: ...`, `Pkg: ...`, `Type: ...`).
+   - Tapping any suggestion instantly applies the filter.
+7. Verification:
+   - Added `SearchQueryTest` (9 tests) verifying search criteria, index fields, suggestions, and privacy invariants.
+   - Enhanced `TimelineViewModelTest` and `TimelineFlowIntegrationTest` verifying debouncing and suggestion flows.
+   - 39 test suites / 216 tests passing cleanly with 100% pass rate.
+
+Reason:
+- Direct compliance with SRS.md §50, Architecture.md §56, and IMPLEMENTATION_PLAN.md §52.
+- 300ms debounce prevents SQLite I/O flooding during continuous user typing while preserving instant UI rendering.
+- Room database-level filtering prevents loading unbounded entities into heap memory.
+- Defense-in-depth guarantee: sensitive input content is never indexed, stored, or searchable.
+
+Consequences:
+Positive:
+- Robust, debounced, database-backed search engine with auto-complete suggestions.
+- 39 test suites / 216 tests passing cleanly.
+- Clean debug (49,542,941 bytes) and release (24,313,388 bytes) APKs verified.
+Negative:
+- None.
+
+
 
 
 

@@ -17,7 +17,9 @@ data class TimelineUiState(
     val currentPage: Int = 0,
     val pageSize: Int = 50,
     val selectedEventForDetail: InteractionEvent? = null,
-    val isFilterDialogVisible: Boolean = false
+    val isFilterDialogVisible: Boolean = false,
+    val searchQueryInput: String = "",
+    val searchSuggestions: List<com.example.inputmonitor.domain.model.SearchSuggestion> = emptyList()
 ) {
     val totalPages: Int
         get() = if (totalMatchingEvents <= 0) 1 else ((totalMatchingEvents + pageSize - 1) / pageSize)

@@ -148,6 +148,73 @@ class EventRepositoryImpl(
             .flowOn(dispatchers.io)
     }
 
+    override fun observeMatchingApplications(query: String, limit: Int): Flow<List<String>> {
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) return kotlinx.coroutines.flow.flowOf(emptyList())
+        return eventDao.observeMatchingApplications(trimmed, limit)
+            .flowOn(dispatchers.io)
+    }
+
+    override fun observeMatchingPackages(query: String, limit: Int): Flow<List<String>> {
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) return kotlinx.coroutines.flow.flowOf(emptyList())
+        return eventDao.observeMatchingPackages(trimmed, limit)
+            .flowOn(dispatchers.io)
+    }
+
+    override fun observeSearchSuggestions(
+        query: String,
+        limit: Int
+    ): Flow<List<com.example.inputmonitor.domain.model.SearchSuggestion>> {
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) return kotlinx.coroutines.flow.flowOf(emptyList())
+
+        return kotlinx.coroutines.flow.combine(
+            eventDao.observeMatchingApplications(trimmed, limit),
+            eventDao.observeMatchingPackages(trimmed, limit)
+        ) { apps, pkgs ->
+            val suggestions = mutableListOf<com.example.inputmonitor.domain.model.SearchSuggestion>()
+
+            apps.forEach { appName ->
+                if (suggestions.size < limit) {
+                    suggestions.add(
+                        com.example.inputmonitor.domain.model.SearchSuggestion(
+                            query = appName,
+                            type = com.example.inputmonitor.domain.model.SuggestionType.APPLICATION
+                        )
+                    )
+                }
+            }
+
+            pkgs.forEach { pkgName ->
+                if (suggestions.size < limit && suggestions.none { it.query.equals(pkgName, ignoreCase = true) }) {
+                    suggestions.add(
+                        com.example.inputmonitor.domain.model.SearchSuggestion(
+                            query = pkgName,
+                            type = com.example.inputmonitor.domain.model.SuggestionType.PACKAGE
+                        )
+                    )
+                }
+            }
+
+            if (suggestions.size < limit) {
+                com.example.inputmonitor.domain.model.EventType.entries
+                    .filter { it.name.contains(trimmed, ignoreCase = true) }
+                    .take(limit - suggestions.size)
+                    .forEach { eventType ->
+                        suggestions.add(
+                            com.example.inputmonitor.domain.model.SearchSuggestion(
+                                query = eventType.name,
+                                type = com.example.inputmonitor.domain.model.SuggestionType.EVENT_TYPE
+                            )
+                        )
+                    }
+            }
+
+            suggestions
+        }.flowOn(dispatchers.io)
+    }
+
     override suspend fun deleteEventsForSession(sessionId: String): Boolean = withContext(dispatchers.io) {
         eventDao.deleteEventsForSession(sessionId) >= 0
     }

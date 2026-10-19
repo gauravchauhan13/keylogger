@@ -83,6 +83,8 @@ interface InteractionEventDao {
           AND (:searchQuery IS NULL OR (
               (packageName IS NOT NULL AND packageName LIKE '%' || :searchQuery || '%') OR 
               (applicationName IS NOT NULL AND applicationName LIKE '%' || :searchQuery || '%') OR
+              (eventType LIKE '%' || :searchQuery || '%') OR
+              (sessionId LIKE '%' || :searchQuery || '%') OR
               (eventData IS NOT NULL AND eventData LIKE '%' || :searchQuery || '%')
           ))
         ORDER BY timestamp DESC
@@ -113,6 +115,8 @@ interface InteractionEventDao {
           AND (:searchQuery IS NULL OR (
               (packageName IS NOT NULL AND packageName LIKE '%' || :searchQuery || '%') OR 
               (applicationName IS NOT NULL AND applicationName LIKE '%' || :searchQuery || '%') OR
+              (eventType LIKE '%' || :searchQuery || '%') OR
+              (sessionId LIKE '%' || :searchQuery || '%') OR
               (eventData IS NOT NULL AND eventData LIKE '%' || :searchQuery || '%')
           ))
     """)
@@ -129,6 +133,42 @@ interface InteractionEventDao {
 
     @Query("SELECT DISTINCT packageName FROM interaction_events WHERE packageName IS NOT NULL ORDER BY packageName ASC")
     fun observeDistinctPackageNames(): Flow<List<String>>
+
+    @Query("""
+        SELECT DISTINCT applicationName FROM interaction_events 
+        WHERE applicationName IS NOT NULL 
+          AND applicationName LIKE '%' || :query || '%' 
+        ORDER BY applicationName ASC 
+        LIMIT :limit
+    """)
+    fun observeMatchingApplications(query: String, limit: Int = 5): Flow<List<String>>
+
+    @Query("""
+        SELECT DISTINCT packageName FROM interaction_events 
+        WHERE packageName IS NOT NULL 
+          AND packageName LIKE '%' || :query || '%' 
+        ORDER BY packageName ASC 
+        LIMIT :limit
+    """)
+    fun observeMatchingPackages(query: String, limit: Int = 5): Flow<List<String>>
+
+    @Query("""
+        SELECT DISTINCT applicationName FROM interaction_events 
+        WHERE applicationName IS NOT NULL 
+          AND applicationName LIKE '%' || :query || '%' 
+        ORDER BY applicationName ASC 
+        LIMIT :limit
+    """)
+    suspend fun getMatchingApplications(query: String, limit: Int = 5): List<String>
+
+    @Query("""
+        SELECT DISTINCT packageName FROM interaction_events 
+        WHERE packageName IS NOT NULL 
+          AND packageName LIKE '%' || :query || '%' 
+        ORDER BY packageName ASC 
+        LIMIT :limit
+    """)
+    suspend fun getMatchingPackages(query: String, limit: Int = 5): List<String>
 
     @Query("DELETE FROM interaction_events WHERE sessionId = :sessionId")
     suspend fun deleteEventsForSession(sessionId: String): Int

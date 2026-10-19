@@ -127,6 +127,8 @@ class EventRepositoryTest {
                 (searchQuery == null || (
                     (it.packageName != null && it.packageName.contains(searchQuery, ignoreCase = true)) ||
                     (it.applicationName != null && it.applicationName.contains(searchQuery, ignoreCase = true)) ||
+                    (it.eventType.contains(searchQuery, ignoreCase = true)) ||
+                    (it.sessionId.contains(searchQuery, ignoreCase = true)) ||
                     (it.eventData != null && it.eventData.contains(searchQuery, ignoreCase = true))
                 ))
             }.sortedByDescending { it.timestamp }
@@ -155,6 +157,8 @@ class EventRepositoryTest {
                 (searchQuery == null || (
                     (it.packageName != null && it.packageName.contains(searchQuery, ignoreCase = true)) ||
                     (it.applicationName != null && it.applicationName.contains(searchQuery, ignoreCase = true)) ||
+                    (it.eventType.contains(searchQuery, ignoreCase = true)) ||
+                    (it.sessionId.contains(searchQuery, ignoreCase = true)) ||
                     (it.eventData != null && it.eventData.contains(searchQuery, ignoreCase = true))
                 ))
             }
@@ -163,6 +167,42 @@ class EventRepositoryTest {
 
         override fun observeDistinctPackageNames(): Flow<List<String>> {
             return flowOf(events.mapNotNull { it.packageName }.distinct().sorted())
+        }
+
+        override fun observeMatchingApplications(query: String, limit: Int): Flow<List<String>> {
+            return flowOf(
+                events.mapNotNull { it.applicationName }
+                    .distinct()
+                    .filter { it.contains(query, ignoreCase = true) }
+                    .sorted()
+                    .take(limit)
+            )
+        }
+
+        override fun observeMatchingPackages(query: String, limit: Int): Flow<List<String>> {
+            return flowOf(
+                events.mapNotNull { it.packageName }
+                    .distinct()
+                    .filter { it.contains(query, ignoreCase = true) }
+                    .sorted()
+                    .take(limit)
+            )
+        }
+
+        override suspend fun getMatchingApplications(query: String, limit: Int): List<String> {
+            return events.mapNotNull { it.applicationName }
+                .distinct()
+                .filter { it.contains(query, ignoreCase = true) }
+                .sorted()
+                .take(limit)
+        }
+
+        override suspend fun getMatchingPackages(query: String, limit: Int): List<String> {
+            return events.mapNotNull { it.packageName }
+                .distinct()
+                .filter { it.contains(query, ignoreCase = true) }
+                .sorted()
+                .take(limit)
         }
 
         override suspend fun deleteEventsForSession(sessionId: String): Int {
@@ -379,5 +419,74 @@ class EventRepositoryTest {
         val list = repository.observeEventsForSession("sess-flow").first()
         assertEquals(1, list.size)
         assertEquals("test", list[0].eventData)
+    }
+
+    @Test
+    fun searchSuggestions_returnsMatchingApplicationsAndPackages() = runBlocking {
+        val fakeDao = FakeInteractionEventDao()
+        val repository = EventRepositoryImpl(fakeDao, testDispatchers)
+
+        repository.insertEvent(
+            InteractionEvent(
+                sessionId = "sess-1",
+                timestamp = 1000L,
+                source = EventSource.KEYBOARD,
+                eventType = EventType.TEXT_COMMITTED,
+                packageName = "com.google.android.calculator",
+                applicationName = "Calculator",
+                eventData = "42",
+                inputClassification = InputClassification.NORMAL_TEXT
+            )
+        )
+        repository.insertEvent(
+            InteractionEvent(
+                sessionId = "sess-1",
+                timestamp = 1001L,
+                source = EventSource.KEYBOARD,
+                eventType = EventType.TEXT_COMMITTED,
+                packageName = "com.example.calendar",
+                applicationName = "Calendar Pro",
+                eventData = "meeting",
+                inputClassification = InputClassification.NORMAL_TEXT
+            )
+        )
+
+        // Query matching "Cal" should return Calculator (app), Calendar Pro (app), com.google.android.calculator (pkg), com.example.calendar (pkg)
+        val suggestions = repository.observeSearchSuggestions("Cal", limit = 5).first()
+        assertTrue(suggestions.isNotEmpty())
+        assertTrue(suggestions.any { it.query == "Calculator" && it.type == com.example.inputmonitor.domain.model.SuggestionType.APPLICATION })
+        assertTrue(suggestions.any { it.query == "Calendar Pro" && it.type == com.example.inputmonitor.domain.model.SuggestionType.APPLICATION })
+        assertTrue(suggestions.any { it.query == "com.google.android.calculator" && it.type == com.example.inputmonitor.domain.model.SuggestionType.PACKAGE })
+    }
+
+    @Test
+    fun observeEventsPaged_searchQuery_matchesEventTypeAndSessionId() = runBlocking {
+        val fakeDao = FakeInteractionEventDao()
+        val repository = EventRepositoryImpl(fakeDao, testDispatchers)
+
+        repository.insertEvent(
+            InteractionEvent(
+                sessionId = "special-session-999",
+                timestamp = 1000L,
+                source = EventSource.ACCESSIBILITY,
+                eventType = EventType.VIEW_CLICKED,
+                packageName = "com.example.app",
+                applicationName = "App",
+                eventData = "button",
+                inputClassification = InputClassification.NORMAL_TEXT
+            )
+        )
+
+        // Match by sessionId
+        val sessionMatch = repository.observeEventsPaged(
+            filter = com.example.inputmonitor.domain.model.EventFilterCriteria(searchQuery = "special-session")
+        ).first()
+        assertEquals(1, sessionMatch.size)
+
+        // Match by eventType
+        val typeMatch = repository.observeEventsPaged(
+            filter = com.example.inputmonitor.domain.model.EventFilterCriteria(searchQuery = "VIEW_CLICKED")
+        ).first()
+        assertEquals(1, typeMatch.size)
     }
 }

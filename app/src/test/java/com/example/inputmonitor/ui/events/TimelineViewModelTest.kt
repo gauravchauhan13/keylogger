@@ -7,7 +7,9 @@ import com.example.inputmonitor.domain.model.EventType
 import com.example.inputmonitor.domain.model.InputClassification
 import com.example.inputmonitor.domain.model.InteractionEvent
 import com.example.inputmonitor.domain.model.MonitoringSession
+import com.example.inputmonitor.domain.model.SearchSuggestion
 import com.example.inputmonitor.domain.model.SessionState
+import com.example.inputmonitor.domain.model.SuggestionType
 import com.example.inputmonitor.domain.repository.EventRepository
 import com.example.inputmonitor.domain.repository.SessionRepository
 import com.example.inputmonitor.domain.session.SessionManager
@@ -97,6 +99,39 @@ class TimelineViewModelTest {
             return flowOf(events.mapNotNull { it.packageName }.distinct().sorted())
         }
 
+        override fun observeMatchingApplications(query: String, limit: Int): Flow<List<String>> {
+            return flowOf(
+                events.mapNotNull { it.applicationName }
+                    .distinct()
+                    .filter { it.contains(query, ignoreCase = true) }
+                    .sorted()
+                    .take(limit)
+            )
+        }
+
+        override fun observeMatchingPackages(query: String, limit: Int): Flow<List<String>> {
+            return flowOf(
+                events.mapNotNull { it.packageName }
+                    .distinct()
+                    .filter { it.contains(query, ignoreCase = true) }
+                    .sorted()
+                    .take(limit)
+            )
+        }
+
+        override fun observeSearchSuggestions(query: String, limit: Int): Flow<List<SearchSuggestion>> {
+            val suggestions = mutableListOf<SearchSuggestion>()
+            events.mapNotNull { it.applicationName }.distinct().filter { it.contains(query, ignoreCase = true) }.forEach {
+                if (suggestions.size < limit) suggestions.add(SearchSuggestion(it, SuggestionType.APPLICATION))
+            }
+            events.mapNotNull { it.packageName }.distinct().filter { it.contains(query, ignoreCase = true) }.forEach {
+                if (suggestions.size < limit && suggestions.none { s -> s.query.equals(it, ignoreCase = true) }) {
+                    suggestions.add(SearchSuggestion(it, SuggestionType.PACKAGE))
+                }
+            }
+            return flowOf(suggestions)
+        }
+
         override suspend fun deleteEventsForSession(sessionId: String): Boolean {
             events.removeAll { it.sessionId == sessionId }
             return true
@@ -119,6 +154,8 @@ class TimelineViewModelTest {
                 (filter.searchQuery == null || (
                     (it.packageName != null && it.packageName.contains(filter.searchQuery, ignoreCase = true)) ||
                     (it.applicationName != null && it.applicationName.contains(filter.searchQuery, ignoreCase = true)) ||
+                    (it.eventType.name.contains(filter.searchQuery, ignoreCase = true)) ||
+                    (it.sessionId.contains(filter.searchQuery, ignoreCase = true)) ||
                     (it.eventData != null && it.eventData.contains(filter.searchQuery, ignoreCase = true))
                 ))
             }
@@ -316,5 +353,78 @@ class TimelineViewModelTest {
         assertFalse(viewModel.uiState.value.filterCriteria.hasActiveFilters)
         assertEquals(0, viewModel.uiState.value.currentPage)
         assertEquals(75, viewModel.uiState.value.totalMatchingEvents)
+    }
+
+    @Test
+    fun onSearchQueryInputChanged_debouncesQueryPropagation() {
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onSearchQueryInputChanged("Notes App")
+        testDispatcher.scheduler.runCurrent()
+        // Raw text updates immediately in UI state
+        assertEquals("Notes App", viewModel.uiState.value.searchQueryInput)
+        // Database filter query has NOT updated yet due to 300ms debounce
+        assertNull(viewModel.uiState.value.filterCriteria.searchQuery)
+
+        // Advance virtual clock past debounce threshold
+        testDispatcher.scheduler.advanceTimeBy(350)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("Notes App", viewModel.uiState.value.filterCriteria.searchQuery)
+        assertEquals(37, viewModel.uiState.value.totalMatchingEvents)
+        assertTrue(viewModel.uiState.value.events.all { it.applicationName == "Notes App" })
+    }
+
+    @Test
+    fun onSearchQueryInputChanged_clearingQuery_resetsImmediately() {
+        viewModel.setSearchQuery("Notes App")
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals("Notes App", viewModel.uiState.value.filterCriteria.searchQuery)
+
+        viewModel.onSearchQueryInputChanged("")
+        testDispatcher.scheduler.runCurrent()
+        assertEquals("", viewModel.uiState.value.searchQueryInput)
+        assertNull(viewModel.uiState.value.filterCriteria.searchQuery)
+    }
+
+    @Test
+    fun searchSuggestions_updatesBasedOnInput() {
+        viewModel.onSearchQueryInputChanged("Notes")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val suggestions = viewModel.uiState.value.searchSuggestions
+        assertTrue(suggestions.isNotEmpty())
+        assertTrue(suggestions.any { it.query == "Notes App" && it.type == SuggestionType.APPLICATION })
+    }
+
+    @Test
+    fun applySuggestion_application_setsSearchFilter() {
+        viewModel.applySuggestion(SearchSuggestion("Notes App", SuggestionType.APPLICATION))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("Notes App", viewModel.uiState.value.filterCriteria.searchQuery)
+        assertEquals("Notes App", viewModel.uiState.value.searchQueryInput)
+        assertEquals(37, viewModel.uiState.value.totalMatchingEvents)
+    }
+
+    @Test
+    fun applySuggestion_package_setsPackageFilter() {
+        viewModel.applySuggestion(SearchSuggestion("com.example.notes", SuggestionType.PACKAGE))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("com.example.notes", viewModel.uiState.value.filterCriteria.packageName)
+        assertNull(viewModel.uiState.value.filterCriteria.searchQuery)
+        assertEquals("", viewModel.uiState.value.searchQueryInput)
+        assertEquals(37, viewModel.uiState.value.totalMatchingEvents)
+    }
+
+    @Test
+    fun applySuggestion_eventType_setsEventTypeFilter() {
+        viewModel.applySuggestion(SearchSuggestion("VIEW_CLICKED", SuggestionType.EVENT_TYPE))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(EventType.VIEW_CLICKED, viewModel.uiState.value.filterCriteria.eventType)
+        assertNull(viewModel.uiState.value.filterCriteria.searchQuery)
+        assertEquals("", viewModel.uiState.value.searchQueryInput)
     }
 }

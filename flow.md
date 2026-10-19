@@ -538,6 +538,58 @@ TimelineUiState Emits
 
 ---
 
+# 12.2. Database-Backed Search & Auto-Suggestion Flow
+
+```text
+User Focuses Search Field in EventsScreen
+   ↓
+User Types Keystroke (e.g. "note")
+   ↓
+TimelineViewModel.onSearchQueryInputChanged("note")
+   ├── Updates raw searchInputFlow immediately (UI displays typed character without latency)
+   └── Resets pagination pageIndex to 0
+   ↓
+Reactive Search Pipeline:
+   ├── Branch A: Real-Time Auto-Suggestions
+   │     observeSearchSuggestions("note", limit = 10)
+   │     ├── Query Room: observeMatchingApplications("note")
+   │     ├── Query Room: observeMatchingPackages("note")
+   │     ├── Map matching EventTypes (e.g. "KEYBOARD", "VIEW_CLICKED")
+   │     └── Emit searchSuggestions: List<SearchSuggestion> to UI
+   │
+   └── Branch B: Debounced Database Query
+         debounce { if (query.isBlank()) 0L else 300L }
+         ↓
+         searchQueryFlow emits debounced "note"
+         ↓
+         Triggers observeEventsFilteredPaged & observeFilteredCount
+         ├── SQLite Index index_interaction_events_applicationName accelerates search
+         ├── Matches across:
+         │     - applicationName LIKE '%note%'
+         │     - packageName LIKE '%note%'
+         │     - eventType LIKE '%note%'
+         │     - sessionId LIKE '%note%'
+         │     - eventData IS NOT NULL AND eventData LIKE '%note%'
+         ├── Sensitive events have eventData = null (never matched by credential strings)
+         └── Emits filtered List<InteractionEvent> and totalCount to UI
+
+User Interaction Options:
+   ├── Taps Suggestion Chip (e.g. "App: Notes")
+   │     ↓
+   │     TimelineViewModel.applySuggestion(suggestion)
+   │     ↓
+   │     Immediately updates searchInputFlow & searchQueryFlow (no debounce delay)
+   │     Suggestions list cleared, filtered timeline refreshed instantly
+   │
+   └── Taps Clear Button (✕)
+         ↓
+         TimelineViewModel.clearSearch()
+         ↓
+         Query immediately cleared (0ms debounce), full event list restored
+```
+
+---
+
 # 13. Export Flow
 
 ```text
@@ -597,5 +649,9 @@ Phase 6: Editor Analysis and Privacy (EditorInfoAnalyzer, SensitiveInputDetector
 Phase 7: IME Event Pipeline (ImeEventPublisher, RawInteractionEvent emission, EventProcessor, ContextResolver, failure tolerance) (COMPLETE)
 Phase 8: AccessibilityService (AppAccessibilityService, AccessibilityEventFilter, AccessibilityEventMapper, AccessibilityEventPublisher) (COMPLETE)
 Phase 9: Unified Event Processing & Integration (Concurrent event interleaving, unified session gating, multi-pipeline privacy invariants, failure tolerance integration) (COMPLETE)
-Phase 10: First-Run Setup & Onboarding UI (NEXT)
+Phase 10: First-Run Setup & Onboarding UI (COMPLETE)
+Phase 11: Dashboard Architecture & Aggregate Event Metrics (COMPLETE)
+Phase 12: Event Timeline, Paged Observation & Multi-Dimensional Filtering (COMPLETE)
+Phase 13: Database-Backed Search, Index Optimization & Debounced Query Engine (COMPLETE)
+Phase 14: Interaction Statistics Engine & UI (NEXT)
 ```

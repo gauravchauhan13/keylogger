@@ -88,6 +88,10 @@ class PrivacyDefenseInDepthTest {
             searchQuery: String?
         ): Flow<Int> = flowOf(insertedEntities.size)
         override fun observeDistinctPackageNames(): Flow<List<String>> = flowOf(emptyList())
+        override fun observeMatchingApplications(query: String, limit: Int): Flow<List<String>> = flowOf(emptyList())
+        override fun observeMatchingPackages(query: String, limit: Int): Flow<List<String>> = flowOf(emptyList())
+        override suspend fun getMatchingApplications(query: String, limit: Int): List<String> = emptyList()
+        override suspend fun getMatchingPackages(query: String, limit: Int): List<String> = emptyList()
         override suspend fun deleteEventsForSession(sessionId: String): Int = 0
         override suspend fun deleteAllEvents(): Int = 0
     }

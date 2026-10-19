@@ -7,7 +7,9 @@ import com.example.inputmonitor.domain.model.EventType
 import com.example.inputmonitor.domain.model.InputClassification
 import com.example.inputmonitor.domain.model.InteractionEvent
 import com.example.inputmonitor.domain.model.MonitoringSession
+import com.example.inputmonitor.domain.model.SearchSuggestion
 import com.example.inputmonitor.domain.model.SessionState
+import com.example.inputmonitor.domain.model.SuggestionType
 import com.example.inputmonitor.domain.repository.EventRepository
 import com.example.inputmonitor.domain.repository.SessionRepository
 import com.example.inputmonitor.domain.session.SessionManager
@@ -103,6 +105,41 @@ class TimelineFlowIntegrationTest {
             }
         }
 
+        override fun observeMatchingApplications(query: String, limit: Int): Flow<List<String>> {
+            return eventsFlow.map { list ->
+                list.mapNotNull { it.applicationName }
+                    .distinct()
+                    .filter { it.contains(query, ignoreCase = true) }
+                    .sorted()
+                    .take(limit)
+            }
+        }
+
+        override fun observeMatchingPackages(query: String, limit: Int): Flow<List<String>> {
+            return eventsFlow.map { list ->
+                list.mapNotNull { it.packageName }
+                    .distinct()
+                    .filter { it.contains(query, ignoreCase = true) }
+                    .sorted()
+                    .take(limit)
+            }
+        }
+
+        override fun observeSearchSuggestions(query: String, limit: Int): Flow<List<SearchSuggestion>> {
+            return eventsFlow.map { list ->
+                val suggestions = mutableListOf<SearchSuggestion>()
+                list.mapNotNull { it.applicationName }.distinct().filter { it.contains(query, ignoreCase = true) }.forEach {
+                    if (suggestions.size < limit) suggestions.add(SearchSuggestion(it, SuggestionType.APPLICATION))
+                }
+                list.mapNotNull { it.packageName }.distinct().filter { it.contains(query, ignoreCase = true) }.forEach {
+                    if (suggestions.size < limit && suggestions.none { s -> s.query.equals(it, ignoreCase = true) }) {
+                        suggestions.add(SearchSuggestion(it, SuggestionType.PACKAGE))
+                    }
+                }
+                suggestions
+            }
+        }
+
         override suspend fun deleteEventsForSession(sessionId: String): Boolean {
             events.removeAll { it.sessionId == sessionId }
             eventsFlow.value = events.toList()
@@ -127,6 +164,8 @@ class TimelineFlowIntegrationTest {
                 (filter.searchQuery == null || (
                     (it.packageName != null && it.packageName.contains(filter.searchQuery, ignoreCase = true)) ||
                     (it.applicationName != null && it.applicationName.contains(filter.searchQuery, ignoreCase = true)) ||
+                    (it.eventType.name.contains(filter.searchQuery, ignoreCase = true)) ||
+                    (it.sessionId.contains(filter.searchQuery, ignoreCase = true)) ||
                     (it.eventData != null && it.eventData.contains(filter.searchQuery, ignoreCase = true))
                 ))
             }
@@ -333,5 +372,105 @@ class TimelineFlowIntegrationTest {
         assertNull(state.selectedEventForDetail)
         assertFalse(state.filterCriteria.hasActiveFilters)
         assertEquals(4, state.totalMatchingEvents)
+    }
+
+    @Test
+    fun searchPipeline_debouncedQueryAndSuggestions_filtersTimelineAccurately() {
+        // Step 1: Ingest distinct application events
+        kotlinx.coroutines.runBlocking {
+            eventRepository.insertEvent(
+                InteractionEvent(
+                    id = 101L,
+                    sessionId = "search-sess-1",
+                    timestamp = 1000L,
+                    source = EventSource.KEYBOARD,
+                    eventType = EventType.TEXT_COMMITTED,
+                    packageName = "com.google.android.calculator",
+                    applicationName = "Calculator",
+                    eventData = "42 + 8",
+                    inputClassification = InputClassification.NORMAL_TEXT
+                )
+            )
+            eventRepository.insertEvent(
+                InteractionEvent(
+                    id = 102L,
+                    sessionId = "search-sess-1",
+                    timestamp = 1010L,
+                    source = EventSource.ACCESSIBILITY,
+                    eventType = EventType.VIEW_CLICKED,
+                    packageName = "com.example.calendar",
+                    applicationName = "Calendar Pro",
+                    eventData = "Schedule Appointment",
+                    inputClassification = InputClassification.NORMAL_TEXT
+                )
+            )
+            eventRepository.insertEvent(
+                InteractionEvent(
+                    id = 103L,
+                    sessionId = "search-sess-2",
+                    timestamp = 1020L,
+                    source = EventSource.KEYBOARD,
+                    eventType = EventType.SENSITIVE_INPUT_DETECTED,
+                    packageName = "com.secure.bank",
+                    applicationName = "Secure Bank",
+                    eventData = null, // Strictly suppressed
+                    inputClassification = InputClassification.SENSITIVE_PASSWORD
+                )
+            )
+        }
+
+        testDispatcher.scheduler.advanceUntilIdle()
+        var state = viewModel.uiState.value
+        assertEquals(3, state.totalMatchingEvents)
+
+        // Step 2: User types "Cal" into search field
+        viewModel.onSearchQueryInputChanged("Cal")
+        testDispatcher.scheduler.runCurrent()
+
+        // Before 300ms debounce threshold
+        assertEquals("Cal", viewModel.uiState.value.searchQueryInput)
+        assertNull(viewModel.uiState.value.filterCriteria.searchQuery)
+
+        // Advance past debounce threshold
+        testDispatcher.scheduler.advanceTimeBy(350)
+        testDispatcher.scheduler.advanceUntilIdle()
+        state = viewModel.uiState.value
+
+        assertEquals("Cal", state.filterCriteria.searchQuery)
+        assertEquals(2, state.totalMatchingEvents) // Calculator and Calendar Pro
+        assertTrue(state.events.all { it.applicationName?.startsWith("Cal") == true })
+
+        // Step 3: Verify auto-complete suggestions
+        val suggestions = state.searchSuggestions
+        assertTrue(suggestions.any { it.query == "Calculator" && it.type == SuggestionType.APPLICATION })
+        assertTrue(suggestions.any { it.query == "Calendar Pro" && it.type == SuggestionType.APPLICATION })
+
+        // Step 4: Click suggestion "Calendar Pro"
+        val calProSuggestion = suggestions.first { it.query == "Calendar Pro" }
+        viewModel.applySuggestion(calProSuggestion)
+        testDispatcher.scheduler.advanceUntilIdle()
+        state = viewModel.uiState.value
+
+        assertEquals("Calendar Pro", state.filterCriteria.searchQuery)
+        assertEquals(1, state.totalMatchingEvents)
+        assertEquals("Calendar Pro", state.events[0].applicationName)
+
+        // Step 5: Privacy check - search for sensitive credential text yields 0 results
+        viewModel.setSearchQuery("SecretPassword123")
+        testDispatcher.scheduler.advanceUntilIdle()
+        state = viewModel.uiState.value
+
+        assertEquals(0, state.totalMatchingEvents)
+        assertTrue(state.events.isEmpty())
+
+        // Step 6: Search by Session ID
+        viewModel.setSearchQuery("search-sess-2")
+        testDispatcher.scheduler.advanceUntilIdle()
+        state = viewModel.uiState.value
+
+        assertEquals(1, state.totalMatchingEvents)
+        assertEquals("Secure Bank", state.events[0].applicationName)
+        assertEquals(InputClassification.SENSITIVE_PASSWORD, state.events[0].inputClassification)
+        assertNull(state.events[0].eventData)
     }
 }
