@@ -15,7 +15,8 @@ class NavigationRoutesTest {
             Screen.Events.route,
             Screen.Statistics.route,
             Screen.Export.route,
-            Screen.Settings.route
+            Screen.Settings.route,
+            Screen.TestBench.route
         )
         val distinctRoutes = routes.distinct()
         assertEquals("Each screen route must be unique", routes.size, distinctRoutes.size)
@@ -30,7 +31,8 @@ class NavigationRoutesTest {
             Screen.Events,
             Screen.Statistics,
             Screen.Export,
-            Screen.Settings
+            Screen.Settings,
+            Screen.TestBench
         )
         screens.forEach { screen ->
             assertNotEquals("", screen.title.trim())

@@ -750,6 +750,61 @@ Action C: Reset All Application Data
 
 ---
 
+# 17. Controlled Application Use Test Screen Flow
+
+```text
+User navigates to TestBenchScreen (via Dashboard "Test Bench" button)
+   │
+   ├── Focus Telemetry Flow
+   │      User taps into an input field:
+   │      Modifier.onFocusChanged { if (isFocused) onFieldFocused(fieldType) }
+   │         ↓
+   │      TestBenchViewModel.onFieldFocused(fieldType)
+   │         ├── Updates activeField StateFlow
+   │         ├── Updates detectedClassification StateFlow
+   │         └── Computes isSensitiveMode = fieldType.isSensitive
+   │         ↓
+   │      TestBenchScreen renders Live Telemetry Card:
+   │         ├── If SENSITIVE (Password / PIN):
+   │         │     - Deep red alert container
+   │         │     - High-contrast badge: [ 🔒 SENSITIVE_PASSWORD ] or [ 🔒 SENSITIVE_PIN ]
+   │         │     - Policy: Key preview popups suppressed, raw text never persisted
+   │         └── If NON-SENSITIVE (Normal, Email, URL, Number, Multiline):
+   │               - Primary/Secondary container
+   │               - High-contrast badge: [ ✓ NORMAL_TEXT ] / [ ✓ EMAIL_ADDRESS ]
+   │               - Policy: Synthetic text capture permitted when session active
+   │
+   ├── Quick Session Control Flow
+   │      User taps [Start Test] / [Stop]:
+   │         ↓
+   │      TestBenchViewModel.startQuickTestSession() / stopQuickTestSession()
+   │         ├── Calls StartMonitoringSessionUseCase / StopMonitoringSessionUseCase
+   │         └── Updates session status pill & reactive counters in real-time
+   │
+   ├── 1-Tap Sample Population Flow
+   │      User taps [Populate Samples]:
+   │         ↓
+   │      TestBenchViewModel.populateSyntheticTestData()
+   │         └── Fills all 7 fields with standardized ground-truth values
+   │
+   └── Invariant Submission & Verification Flow (SRS.md §66 [SUBMIT])
+          User taps [Submit Test Verification]:
+             ↓
+          TestBenchViewModel.submitTestInputs()
+             ├── Evaluates filled fields against privacy invariants:
+             │     - AC-29: Permitted synthetic non-sensitive text (Normal, Email, URL, Number, Multiline)
+             │     - AC-30: Password and PIN fields classified as sensitive with credential suppression
+             │     - AC-31: Zero credential persistence guaranteed across Room SQLCipher and export pipelines
+             │     - AC-32: Keyboard typing and IME input methods remain operational regardless of session status
+             └── Sets TestBenchSubmissionResult
+             ↓
+          TestBenchScreen presents SubmissionResultDialog:
+             ├── Displays timestamp and counts of verified fields
+             └── Confirms 100% compliance across all 4 invariants
+```
+
+---
+
 # Current Implementation State
 
 ```text
@@ -770,7 +825,9 @@ Phase 13: Database-Backed Search, Index Optimization & Debounced Query Engine (C
 Phase 14: Interaction Statistics Engine & UI (COMPLETE)
 Phase 15: Export Engine (COMPLETE)
 Phase 16: Data Management (COMPLETE)
-Phase 17: Controlled Application Use Test Screen (NEXT)
+Phase 17: Controlled Application Use Test Screen (COMPLETE)
+Phase 18: Performance Optimization (NEXT)
 ```
+
 
 

@@ -27,11 +27,11 @@ Overall Status:
 IN PROGRESS
 
 Current Phase:
-Phase 16 complete; ready to begin Phase 17 (Controlled Application Use Test Screen)
+Phase 17 complete; ready to begin Phase 18 (Performance Optimization)
 
 Current Objective:
-Phase 16 (Data Management) complete: Implemented single session deletion, bulk sessions deletion, complete application data reset, confirmation safety gates, and cascading event cleanup. Domain use cases DeleteSessionUseCase, DeleteAllSessionsUseCase, DeleteAllApplicationDataUseCase with defense-in-depth cascading event purge. Extended SessionManager with onSessionDeleted and resetSessionState. Upgraded SettingsScreen and SettingsViewModel with reactive storage overview, logging toggles, session inventory, Danger Zone actions, and Material 3 confirmation dialogs. 52 test suites / 266 unit tests passing (100% pass rate in ~6s), clean debug (50,124,389 bytes) and R8 release (24,542,904 bytes) builds verified.
-Ready to implement Phase 17 (Controlled Application Use Test Screen).
+Phase 17 (Controlled Application Use Test Screen) complete: Implemented dedicated in-app test bench providing 7 controlled ground-truth input fields (Normal Text, Email, URL, Number, Multiline, Password, PIN) to establish ground-truth validation for IME capture and privacy redaction per IMPLEMENTATION_PLAN.md §56, SRS.md §66-§73, design.md §Screen 6, and AC-29, AC-30, AC-31, AC-32. Real-time focus telemetry banner, 1-tap sample population, quick session management, and automated invariant verification submission. 55 test suites / 283 unit tests passing (100% pass rate in ~2.25s), clean debug (50,481,121 bytes) and R8 release (24,592,056 bytes) builds verified.
+Ready to implement Phase 18 (Performance Optimization).
 ```
 
 Update these values as development proceeds.
@@ -103,7 +103,7 @@ Phase-0 living documents (created and active):
 
 [✓] Phase 16 — Data Management
 
-[ ] Phase 17 — Controlled Application Use Test Screen
+[✓] Phase 17 — Controlled Application Use Test Screen
 
 [ ] Phase 18 — Performance Optimization
 
@@ -130,13 +130,13 @@ Use:
 ## Currently Implementing
 
 ```text
-Ready to begin Phase 17 — Controlled Application Use Test Screen.
+Ready to begin Phase 18 — Performance Optimization.
 ```
 
 ## Current Goal
 
 ```text
-Implement Phase 17: Dedicated in-app test bench providing controlled input fields (Normal Text, Email, URL, Number, Multiline, Password, PIN) to establish ground-truth validation for IME capture and privacy redaction per IMPLEMENTATION_PLAN.md §56 and SRS.md AC-29, AC-30.
+Implement Phase 18: Execute dedicated performance optimization pass across CPU, RAM, battery, keyboard latency (<2ms), accessibility processing, startup time, database indexing, and UI rendering performance per IMPLEMENTATION_PLAN.md §57 and DEVELOPMENT_GUIDELINES.md.
 ```
 
 ---
@@ -379,27 +379,37 @@ Currently:
   - Added 6 test suites / 18 unit tests: DeleteSessionUseCaseTest, DeleteAllSessionsUseCaseTest, DeleteAllApplicationDataUseCaseTest, SettingsViewModelTest, SettingsFlowIntegrationTest, CascadingDeletionTest
   - Verified 52 test suites / 266 unit tests passing (100% pass rate in ~6s)
   - Verified clean debug (app-debug.apk: 50,124,389 bytes) and R8 release (app-release.apk: 24,542,904 bytes) builds
+
+✓ Phase 17 completed:
+  - Implemented dedicated in-app test bench establishing known ground truth for IME capture and privacy redaction (IMPLEMENTATION_PLAN.md §56, SRS.md §66-§73, design.md §Screen 6, AC-29, AC-30, AC-31, AC-32, DEC-031)
+  - Built 7 standardized controlled ground-truth editors: Normal Text, Email Address, URL / Web Address, Numeric Input, Multiline Notes, Password, Numeric PIN
+  - Created TestBenchFieldType enum with exact KeyboardType, ImeAction, expected InputClassification, sample test strings, and SRS invariant references
+  - Implemented TestBenchViewModel: real-time active session observation, live aggregate session counters (EventRepository.observeStatistics), focus telemetry updates, 1-tap synthetic data population, in-situ session controls, and automated ground-truth invariant verification submission
+  - Created Material 3 TestBenchScreen: active session status banner, real-time classification detection card (high-contrast sensitive badge with 🔒 icon vs permitted non-sensitive badge), 7 OutlinedTextField inputs with focus detection, action buttons, Ground-Truth Invariants Reference Card, and Material 3 verification summary dialog
+  - Integrated Screen.TestBench into Screen.kt, AppNavigation.kt, and DashboardScreen.kt Quick Navigation
+  - Added 17 unit/integration tests: TestBenchViewModelTest (10 tests), ControlledInputPrivacyTest (5 tests), updated NavigationRoutesTest (+2 assertions)
+  - Verified 55 test suites / 283 unit tests passing (100% pass rate in ~2.25s)
+  - Verified clean debug (app-debug.apk: 50,481,121 bytes) and R8 release (app-release.apk: 24,592,056 bytes) builds
 ```
 
 ---
 
 # 7. Next Tasks
 
-Next tasks for Phase 17 (Controlled Application Use Test Screen):
+Next tasks for Phase 18 (Performance Optimization):
 
 ```text
-1. Begin Phase 17 per IMPLEMENTATION_PLAN.md §56 and SRS.md AC-29, AC-30.
-2. Build dedicated in-app test screen with controlled input fields representing ground truth:
-   - Normal text
-   - Email
-   - URL
-   - Number
-   - Multiline
-   - Password (redaction verification)
-   - PIN (redaction verification)
-3. Connect screen to navigation and provide test inputs for manual/automated verification.
-4. Verify IME capture and privacy filtering invariants against known ground-truth inputs.
-5. Update decision.md, tech.md, flow.md, and PROGRESS.md in required sequence.
+1. Begin Phase 18 per IMPLEMENTATION_PLAN.md §57 and DEVELOPMENT_GUIDELINES.md.
+2. Profile and optimize performance across critical paths:
+   - CPU, RAM, and battery consumption
+   - Keyboard touch-down latency (< 2ms) and 0-allocation key drawing
+   - Accessibility event processing, deduplication, and scroll storm throttling
+   - Cold and warm startup times
+   - Event processing pipeline throughput and Room database index efficiency
+   - Compose UI frame rendering and recomposition bounds
+   - Streaming export memory residency ($O(1)$ RAM)
+3. Conduct dead code and dependency reviews (IMPLEMENTATION_PLAN.md §58, §59).
+4. Update decision.md, tech.md, flow.md, and PROGRESS.md in required sequence.
 ```
 
 

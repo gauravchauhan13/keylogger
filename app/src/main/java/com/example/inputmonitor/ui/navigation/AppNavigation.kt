@@ -110,6 +110,9 @@ fun AppNavigation(
                 onNavigateToExport = {
                     navController.navigate(Screen.Export.route)
                 },
+                onNavigateToTestBench = {
+                    navController.navigate(Screen.TestBench.route)
+                },
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
                 },
@@ -241,6 +244,35 @@ fun AppNavigation(
                 onDismissDeleteAllDataDialog = { settingsViewModel.dismissDeleteAllDataDialog() },
                 onDismissUserMessage = { settingsViewModel.dismissUserMessage() },
                 onDismissError = { settingsViewModel.dismissError() }
+            )
+        }
+
+        composable(Screen.TestBench.route) {
+            val testBenchViewModel: com.example.inputmonitor.ui.testbench.TestBenchViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                factory = com.example.inputmonitor.ui.testbench.TestBenchViewModel.provideFactory(
+                    observeActiveSessionUseCase = container.observeActiveSessionUseCase,
+                    observeSessionStateUseCase = container.observeSessionStateUseCase,
+                    startMonitoringSessionUseCase = container.startMonitoringSessionUseCase,
+                    stopMonitoringSessionUseCase = container.stopMonitoringSessionUseCase,
+                    eventRepository = container.eventRepository,
+                    dispatchers = container.dispatchers
+                )
+            )
+
+            val testBenchUiState by testBenchViewModel.uiState.collectAsState()
+
+            com.example.inputmonitor.ui.testbench.TestBenchScreen(
+                uiState = testBenchUiState,
+                onNavigateBack = { navController.popBackStack() },
+                onFieldFocused = { testBenchViewModel.onFieldFocused(it) },
+                onFieldValueChanged = { field, value -> testBenchViewModel.onFieldValueChanged(field, value) },
+                onClearAllFields = { testBenchViewModel.clearAllFields() },
+                onPopulateSyntheticData = { testBenchViewModel.populateSyntheticTestData() },
+                onStartQuickSession = { testBenchViewModel.startQuickTestSession() },
+                onStopQuickSession = { testBenchViewModel.stopQuickTestSession() },
+                onSubmitTestInputs = { testBenchViewModel.submitTestInputs() },
+                onDismissFeedback = { testBenchViewModel.dismissFeedback() },
+                onDismissSubmissionResult = { testBenchViewModel.dismissSubmissionResult() }
             )
         }
     }

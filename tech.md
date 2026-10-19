@@ -494,6 +494,43 @@ User Destructive Action in SettingsScreen
 
 ---
 
+## Controlled Test Bench Subsystem
+
+```text
+TestBenchScreen (Focus Telemetry & Ground-Truth Editors)
+       │
+       ├── Focus Event (Modifier.onFocusChanged)
+       │     └── TestBenchViewModel.onFieldFocused(fieldType)
+       │           ├── updates activeField & detectedClassification banner
+       │           └── toggles isSensitiveMode (SENSITIVE vs PERMITTED)
+       │
+       ├── Quick Session Controls
+       │     ├── startQuickTestSession() ──► StartMonitoringSessionUseCase
+       │     └── stopQuickTestSession()  ──► StopMonitoringSessionUseCase
+       │
+       ├── Real-Time Event Counters
+       │     └── EventRepository.observeStatistics(activeSession.id)
+       │           ├── Total events in session
+       │           ├── Keyboard commits
+       │           └── Sensitive suppressions
+       │
+       └── Ground-Truth Invariant Verification
+             └── TestBenchViewModel.submitTestInputs()
+                   ├── Evaluates all 7 controlled fields against ground truth:
+                   │     ├── AC-29: Normal Text, Email, URL, Number, Multiline (Plaintext permitted)
+                   │     ├── AC-30: Password, PIN (Sensitive classification, eventData = NULL)
+                   │     ├── AC-31: Export pipeline validation (Zero credential persistence)
+                   │     └── AC-32: Keyboard availability when logging is stopped
+                   └── Emits TestBenchSubmissionResult dialog with full checklist
+```
+
+- Standardized Editor Configurations: 7 controlled input fields (Normal Text, Email, URL, Number, Multiline, Password, PIN) mapped to known EditorInfo classes and variations.
+- Live Telemetry Banner: High-contrast status banner providing real-time visual feedback on field classification and sensitive mode suppression.
+- Synthetic Population: 1-tap data population (`populateSyntheticTestData`) providing standardized ground-truth strings without manual typing.
+- Automated Invariant Verification: Formulates a structured verification report evaluating AC-29, AC-30, AC-31, and AC-32 compliance.
+
+---
+
 ## Dependencies (Pinned)
 
 

@@ -1204,6 +1204,82 @@ Positive:
 Negative:
 - None.
 
+---
+
+### DEC-031: Controlled Application Use Test Screen Architecture, Invariant Ground-Truth Verification, and Real-Time Focus Telemetry
+
+Date:
+2026-10-19
+
+Status:
+ACCEPTED
+
+Context:
+Phase 17 mandates implementing a dedicated controlled application use screen representing known ground truth for IME tests (IMPLEMENTATION_PLAN.md §56, SRS.md §66-§73, design.md §Screen 6, AC-29, AC-30, AC-31, AC-32).
+Testing input monitoring and sensitive input detection in arbitrary third-party apps introduces external variability. An in-app test bench provides known ground truth across 7 standardized editor configurations:
+1. Normal Text (`InputType.TYPE_CLASS_TEXT`)
+2. Email Address (`InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS`)
+3. URL / Web Address (`InputType.TYPE_TEXT_VARIATION_URI`)
+4. Numeric Input (`InputType.TYPE_CLASS_NUMBER`)
+5. Multiline Notes (`InputType.TYPE_TEXT_FLAG_MULTI_LINE`)
+6. Password (`InputType.TYPE_TEXT_VARIATION_PASSWORD`)
+7. Numeric PIN (`InputType.TYPE_NUMBER_VARIATION_PASSWORD`)
+
+Key architectural requirements:
+- Ground-truth invariant AC-29: Synthetic non-sensitive input (Normal, Email, URL, Number, Multiline) must be recorded only when an active monitoring session is running.
+- Ground-truth invariant AC-30: Known password and PIN fields must unconditionally suppress popup key previews and never persist entered credential contents (`eventData = null`).
+- Ground-truth invariant AC-31: Sensitive content must remain absent from SQLite persistence, exports, and debug logs.
+- Ground-truth invariant AC-32: Stopping session logging or logger failure must never disable or degrade normal keyboard typing.
+- Real-time classification telemetry banner: The test bench must display a live indicator of detected field classification, sensitive status, and session metrics when focusing any editor.
+
+Decision:
+1. Ground-Truth Field Definition:
+   - Created `TestBenchFieldType` enum defining the 7 controlled ground-truth editors with exact `KeyboardType`, `ImeAction`, expected `InputClassification`, sensitivity flag, sample test strings, and SRS verification annotations.
+2. Presentation Layer (`TestBenchUiState`, `TestBenchViewModel`, and `TestBenchScreen`):
+   - Defined `TestBenchUiState` and `TestBenchSubmissionResult`.
+   - Built `TestBenchViewModel` with reactive state observation:
+     - Real-time active session tracking via `ObserveActiveSessionUseCase` and `ObserveSessionStateUseCase`.
+     - Live aggregate session counters (total events, keyboard commits, sensitive suppressions) via `EventRepository.observeStatistics`.
+     - Live focus telemetry updates (`onFieldFocused`) mapping active editors to instantaneous classification indicators.
+     - Synthetic sample population (`populateSyntheticTestData`) providing 1-tap test execution without manual typing.
+     - Direct session controls (`startQuickTestSession`, `stopQuickTestSession`) enabling in-situ testing without navigating away.
+     - Synthetic test submission verification (`submitTestInputs`) evaluating invariant compliance and presenting a structured verification dialog per SRS §66 `[SUBMIT]`.
+   - Implemented rich Material 3 `TestBenchScreen`:
+     - TopAppBar with navigation back and reset actions.
+     - Active session status card with live indicator and 1-tap start/stop toggle.
+     - Real-time classification detection card (design.md §Screen 6) with high-contrast sensitive badges (`[ 🔒 SENSITIVE_PASSWORD ]`, `[ 🔒 SENSITIVE_PIN ]`) vs permitted non-sensitive badges (`[ ✓ NORMAL_TEXT ]`).
+     - 7 clearly labeled `OutlinedTextField` editors with focus listeners, helper text, and monospace classification badges.
+     - Action bar (`[ Populate Samples ]`, `[ Clear Fields ]`, `[ Submit Test Verification ]`).
+     - Ground-Truth Invariants Reference Card detailing AC-29, AC-30, AC-31, AC-32.
+     - Ground-Truth Verification Summary Dialog presenting verified invariant status upon submission.
+3. Navigation & Dashboard Integration:
+   - Added `Screen.TestBench` in `Screen.kt`.
+   - Wired `Screen.TestBench.route` in `AppNavigation.kt`.
+   - Added `Test Bench` quick navigation button in `DashboardScreen.kt`.
+4. Automated Test Verification:
+   - Created `TestBenchViewModelTest` (10 unit tests) verifying initial state, focus transitions, sensitive detection, field updates, synthetic population, quick session management, and invariant submission.
+   - Created `ControlledInputPrivacyTest` (5 tests) verifying end-to-end ground truth:
+     - AC-29: Normal, Email, and URL synthetic text preservation and non-sensitive classification.
+     - AC-30: Strict password and PIN credential redaction (`eventData = null`).
+     - AC-31: Zero credential persistence across export pipelines (`ExportValidatorImpl` & `CsvEventExporterImpl`).
+     - AC-32: Keyboard typing and `KeyProcessor` operation fully functional when session is inactive.
+   - Updated `NavigationRoutesTest` validating route uniqueness and non-empty titles.
+   - Total test suite expanded to 55 test suites / 283 unit tests passing (100% pass rate in ~2.25s).
+   - Validated clean debug (`app-debug.apk`: 50,481,121 bytes) and release (`app-release.apk`: 24,592,056 bytes) APK builds.
+
+Reason:
+- Satisfies IMPLEMENTATION_PLAN.md §56, SRS.md §66-§73, design.md §Screen 6, and AC-29, AC-30, AC-31, AC-32.
+- Provides a controlled, reproducible test environment for validating IME capture and zero credential persistence.
+
+Consequences:
+Positive:
+- Deterministic ground-truth test environment embedded directly in the application.
+- Real-time visual feedback on IME field classification and sensitive mode activation.
+- 55 test suites and 283 unit tests passing with 100% pass rate.
+Negative:
+- None.
+
+
 
 
 
