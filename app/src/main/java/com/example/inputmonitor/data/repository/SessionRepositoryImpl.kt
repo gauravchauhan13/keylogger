@@ -66,6 +66,6 @@ class SessionRepositoryImpl(
     }
 
     override suspend fun deleteAllSessions(): Boolean = withContext(dispatchers.io) {
-        sessionDao.deleteAllSessions() > 0
+        sessionDao.deleteAllSessions() >= 0
     }
 }

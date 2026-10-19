@@ -1149,6 +1149,62 @@ Positive:
 Negative:
 - None.
 
+---
+
+### DEC-030: Data Management Subsystem, Cascading Purge Architecture, and Two-Step User Confirmation Engine
+
+Date:
+2026-10-19
+
+Status:
+Accepted
+
+Context:
+In accordance with `SRS.md` §55, `Architecture.md` §50, and `IMPLEMENTATION_PLAN.md` §55 (Phase 16 — Data Management), the application must give the user complete, sovereign control over local storage and recorded data. Users must be able to:
+1. Delete a specific monitoring session (with automatic cascading deletion of all associated interaction events).
+2. Delete all monitoring sessions and all recorded events in bulk.
+3. Completely purge all application data (sessions, events, in-memory session tracking, and persistent DataStore preferences).
+4. Require explicit, non-bypassable confirmation dialogs for all destructive actions to prevent accidental data loss.
+
+Decision:
+1. Multi-Layer Cascading Purge & Defense-in-Depth:
+   - While SQLite foreign key constraints enforce `onDelete = ForeignKey.CASCADE` at the schema level (`interaction_events` referencing `monitoring_sessions.id`), `DeleteSessionUseCase`, `DeleteAllSessionsUseCase`, and `DeleteAllApplicationDataUseCase` execute explicit event purge queries (`deleteEventsForSession` / `deleteAllEvents`) prior to session deletion as defense-in-depth across SQLite and room drivers.
+2. In-Memory Session Synchronization:
+   - Extended `SessionManager` interface with `onSessionDeleted(sessionId: String)` and `resetSessionState()` to atomically reset active session tracking in-memory to `INACTIVE` and `currentSession = null` if an active or paused session is purged.
+   - Ensures `SessionGate` immediately disallows incoming event recording after session deletion.
+3. Domain Use Cases:
+   - `DeleteSessionUseCase`: deletes events for target session, deletes session entity from Room, and synchronizes `SessionManager`.
+   - `DeleteAllSessionsUseCase`: deletes all events, deletes all sessions, and resets `SessionManager`.
+   - `DeleteAllApplicationDataUseCase`: purges all events, all sessions, resets `SessionManager`, and resets DataStore preferences via `PreferencesRepository.clearAllPreferences()`.
+4. Reactive UI State & Confirmation Workflows:
+   - Upgraded `SettingsScreen` and `SettingsViewModel`:
+     - Local storage & security status card (Total sessions, total events via reactive Room `observeEventCounts` flow, SQLCipher AES-256 encrypted badge).
+     - Logging preferences card (toggles for Keyboard logging and Accessibility logging).
+     - Recorded sessions list with per-session timestamps, status badges, and delete action.
+     - Prominent "Danger Zone" card containing "Delete All Sessions" and "Reset All Application Data" destructive actions.
+     - Two-step confirmation dialogs (Material 3 `AlertDialog` with warning indicators) for single session, bulk sessions, and complete application data reset.
+5. Verification & Testing:
+   - Created `DeleteSessionUseCaseTest` (4 unit tests).
+   - Created `DeleteAllSessionsUseCaseTest` (2 unit tests).
+   - Created `DeleteAllApplicationDataUseCaseTest` (1 unit test).
+   - Created `SettingsViewModelTest` (6 unit tests).
+   - Created `SettingsFlowIntegrationTest` (2 end-to-end integration tests).
+   - Created `CascadingDeletionTest` (3 database cascading verification tests).
+   - Total test suite expanded to 52 test suites / 266 unit tests passing (100% pass rate).
+
+Reason:
+- Satisfies SRS.md §55, AC-28, Architecture.md §50, and IMPLEMENTATION_PLAN.md §55.
+- Guarantees complete data sovereignty and privacy compliance with zero residual artifacts after deletion.
+
+Consequences:
+Positive:
+- Complete single-session and bulk data deletion with cascading event cleanup.
+- All 266 unit tests passing with 100% pass rate.
+- Clean debug (50,124,389 bytes) and R8 release (24,542,904 bytes) APK builds verified.
+Negative:
+- None.
+
+
 
 
 

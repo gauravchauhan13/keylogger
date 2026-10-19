@@ -141,4 +141,23 @@ class SessionManagerImpl(
             }
         }
     }
+
+    override suspend fun onSessionDeleted(sessionId: String): Unit = withContext(dispatchers.io) {
+        mutex.withLock {
+            if (_currentSession.value?.id == sessionId) {
+                _currentSession.value = null
+                _sessionState.value = SessionState.INACTIVE
+                preferencesRepository.setActiveSessionId(null)
+            }
+        }
+    }
+
+    override suspend fun resetSessionState(): Unit = withContext(dispatchers.io) {
+        mutex.withLock {
+            _currentSession.value = null
+            _sessionState.value = SessionState.INACTIVE
+            preferencesRepository.setActiveSessionId(null)
+        }
+    }
 }
+

@@ -80,7 +80,11 @@ interface AppContainer {
     val exportValidator: com.example.inputmonitor.domain.export.ExportValidator
     val csvEventExporter: com.example.inputmonitor.data.export.CsvEventExporter
     val exportSessionUseCase: com.example.inputmonitor.domain.usecase.ExportSessionUseCase
+    val deleteSessionUseCase: com.example.inputmonitor.domain.usecase.DeleteSessionUseCase
+    val deleteAllSessionsUseCase: com.example.inputmonitor.domain.usecase.DeleteAllSessionsUseCase
+    val deleteAllApplicationDataUseCase: com.example.inputmonitor.domain.usecase.DeleteAllApplicationDataUseCase
 }
+
 
 /**
  * Default implementation of [AppContainer] initialized in [com.example.inputmonitor.MonitoringApplication].
@@ -222,4 +226,33 @@ class DefaultAppContainer(
             dispatchers = dispatchers
         )
     }
+
+    override val deleteSessionUseCase: com.example.inputmonitor.domain.usecase.DeleteSessionUseCase by lazy {
+        com.example.inputmonitor.domain.usecase.DeleteSessionUseCase(
+            sessionRepository = sessionRepository,
+            eventRepository = eventRepository,
+            sessionManager = sessionManager,
+            dispatchers = dispatchers
+        )
+    }
+
+    override val deleteAllSessionsUseCase: com.example.inputmonitor.domain.usecase.DeleteAllSessionsUseCase by lazy {
+        com.example.inputmonitor.domain.usecase.DeleteAllSessionsUseCase(
+            sessionRepository = sessionRepository,
+            eventRepository = eventRepository,
+            sessionManager = sessionManager,
+            dispatchers = dispatchers
+        )
+    }
+
+    override val deleteAllApplicationDataUseCase: com.example.inputmonitor.domain.usecase.DeleteAllApplicationDataUseCase by lazy {
+        com.example.inputmonitor.domain.usecase.DeleteAllApplicationDataUseCase(
+            sessionRepository = sessionRepository,
+            eventRepository = eventRepository,
+            preferencesRepository = preferencesRepository,
+            sessionManager = sessionManager,
+            dispatchers = dispatchers
+        )
+    }
 }
+

@@ -688,6 +688,68 @@ Room Aggregate Queries (SQLite Database)
 
 ---
 
+---
+
+# 16. Data Management Flow
+
+```text
+User Navigates to Settings & Data Management
+   ↓
+SettingsScreen displays:
+   ├── Local Storage Overview (Total sessions, Total events, AES-256 SQLCipher status)
+   ├── Logging Preferences (Keyboard & Accessibility capture switches)
+   ├── Recorded Sessions Inventory (Session metadata, status pills, delete buttons)
+   └── Danger Zone (Irreversible bulk deletion actions)
+
+Action A: Delete Individual Session
+   User taps Delete (trash icon) on session item
+      ↓
+   Two-Step Confirmation: Material 3 AlertDialog ("Delete Session?")
+      ↓ User confirms
+   SettingsViewModel.confirmDeleteSession()
+      ↓
+   DeleteSessionUseCase(sessionId)
+      ├── EventRepository.deleteEventsForSession(sessionId) [Explicit Cascading Cleanup]
+      ├── SessionRepository.deleteSession(sessionId) [Room Delete]
+      └── SessionManager.onSessionDeleted(sessionId) [In-memory reset if active]
+      ↓
+   Reactive Room flows update counts and session list automatically
+   Snackbar confirms: "Session \"[name]\" and its events were deleted."
+
+Action B: Delete All Sessions
+   User taps "Delete All Sessions" in Danger Zone
+      ↓
+   Two-Step Confirmation: Material 3 AlertDialog ("Delete All Sessions?")
+      ↓ User confirms
+   SettingsViewModel.confirmDeleteAllSessions()
+      ↓
+   DeleteAllSessionsUseCase()
+      ├── EventRepository.deleteAllEvents()
+      ├── SessionRepository.deleteAllSessions()
+      └── SessionManager.resetSessionState()
+      ↓
+   UI state reflects 0 sessions and 0 events
+   Snackbar confirms: "All sessions and recorded events were permanently deleted."
+
+Action C: Reset All Application Data
+   User taps "Reset All Application Data" in Danger Zone
+      ↓
+   Two-Step Confirmation: Material 3 AlertDialog ("Reset All Application Data?")
+      ↓ User confirms
+   SettingsViewModel.confirmDeleteAllData()
+      ↓
+   DeleteAllApplicationDataUseCase()
+      ├── EventRepository.deleteAllEvents()
+      ├── SessionRepository.deleteAllSessions()
+      ├── SessionManager.resetSessionState()
+      └── PreferencesRepository.clearAllPreferences()
+      ↓
+   All data wiped; DataStore preferences reset to factory state
+   Snackbar confirms: "All application data and preferences have been reset."
+```
+
+---
+
 # Current Implementation State
 
 ```text
@@ -707,6 +769,8 @@ Phase 12: Event Timeline, Paged Observation & Multi-Dimensional Filtering (COMPL
 Phase 13: Database-Backed Search, Index Optimization & Debounced Query Engine (COMPLETE)
 Phase 14: Interaction Statistics Engine & UI (COMPLETE)
 Phase 15: Export Engine (COMPLETE)
-Phase 16: Data Management (NEXT)
+Phase 16: Data Management (COMPLETE)
+Phase 17: Controlled Application Use Test Screen (NEXT)
 ```
+
 

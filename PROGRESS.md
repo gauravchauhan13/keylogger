@@ -27,11 +27,11 @@ Overall Status:
 IN PROGRESS
 
 Current Phase:
-Phase 15 complete; ready to begin Phase 16 (Data Management)
+Phase 16 complete; ready to begin Phase 17 (Controlled Application Use Test Screen)
 
 Current Objective:
-Phase 15 (Export) complete: Local-first RFC-4180 CSV streaming exporter (CsvEventExporterImpl), memory-bounded chunked pagination (CHUNK_SIZE = 250 in ExportSessionUseCase), export boundary defense-in-depth sanitization (ExportValidatorImpl redacting passwords, PINs, OTPs, and Luhn-matching credit cards), Storage Access Framework (SAF) integration via CreateDocument("text/csv"), full Material 3 ExportScreen with real-time progress indicators, and DashboardScreen navigation wiring. 46 unit test suites / 248 tests passing (100% pass rate in ~2.4s), clean debug (49,995,701 bytes) and R8 release (24,457,716 bytes) builds verified.
-Ready to implement Phase 16 (Data Management).
+Phase 16 (Data Management) complete: Implemented single session deletion, bulk sessions deletion, complete application data reset, confirmation safety gates, and cascading event cleanup. Domain use cases DeleteSessionUseCase, DeleteAllSessionsUseCase, DeleteAllApplicationDataUseCase with defense-in-depth cascading event purge. Extended SessionManager with onSessionDeleted and resetSessionState. Upgraded SettingsScreen and SettingsViewModel with reactive storage overview, logging toggles, session inventory, Danger Zone actions, and Material 3 confirmation dialogs. 52 test suites / 266 unit tests passing (100% pass rate in ~6s), clean debug (50,124,389 bytes) and R8 release (24,542,904 bytes) builds verified.
+Ready to implement Phase 17 (Controlled Application Use Test Screen).
 ```
 
 Update these values as development proceeds.
@@ -101,7 +101,7 @@ Phase-0 living documents (created and active):
 
 [✓] Phase 15 — Export
 
-[ ] Phase 16 — Data Management
+[✓] Phase 16 — Data Management
 
 [ ] Phase 17 — Controlled Application Use Test Screen
 
@@ -130,13 +130,13 @@ Use:
 ## Currently Implementing
 
 ```text
-Ready to begin Phase 16 — Data Management.
+Ready to begin Phase 17 — Controlled Application Use Test Screen.
 ```
 
 ## Current Goal
 
 ```text
-Implement Phase 16: Session deletion, bulk session deletion, complete application data reset, confirmation dialogs, and cascading event cleanup per SRS.md §55, Architecture.md §50, and IMPLEMENTATION_PLAN.md §55.
+Implement Phase 17: Dedicated in-app test bench providing controlled input fields (Normal Text, Email, URL, Number, Multiline, Password, PIN) to establish ground-truth validation for IME capture and privacy redaction per IMPLEMENTATION_PLAN.md §56 and SRS.md AC-29, AC-30.
 ```
 
 ---
@@ -350,34 +350,58 @@ Currently:
   - Verified all 39 test suites / 216 unit tests passing cleanly (100% pass rate in ~21s)
   - Verified clean debug build (app-debug.apk: 49,542,941 bytes)
   - Verified clean release build with R8 shrinking (app-release.apk: 24,313,388 bytes)
+
+✓ Phase 14 completed:
+  - Root-caused and resolved all 4 native startup/permission-grant crash vectors: native SQLCipher linkage System.loadLibrary("sqlcipher"), immediate immutable event snapshotting (SimpleAccessibilityEventInfo), Android Keystore AES-GCM self-healing on passphrase failure, and system status readiness checks
+  - Implemented sub-millisecond SQLite aggregate queries in InteractionEventDao: observeStatisticsSummary, observeAppUsageStats, observeHourlyActivity
+  - Built 24-hour circadian histogram normalization engine (0..23 hours) with relative bar heights and app usage percentage breakdowns in EventRepositoryImpl
+  - Created domain models in domain/model/ (InteractionStatistics, CategoryCounts, AppUsageBreakdown, HourlyActivityPoint)
+  - Created StatisticsUiState and StatisticsViewModel with StateFlow coordination and session scope switching
+  - Built full Material 3 StatisticsScreen with Summary card, Category breakdown pills, 24-hour circadian bar chart, and Top applications progress bars
+  - Added 4 test suites / 21 tests: StatisticsViewModelTest, StatisticsUiStateTest, StatisticsSummaryTupleTest, StatisticsFlowIntegrationTest
+  - Verified 41 test suites / 237 unit tests passing (100% pass rate)
+
+✓ Phase 15 completed:
+  - Implemented local-first RFC-4180 streaming CSV exporter in CsvEventExporterImpl with UTF-8 flushing and standard escaping
+  - Built ExportSessionUseCase streaming paged chunks (CHUNK_SIZE = 250) directly to OutputStream with real-time progress callbacks and O(1) heap allocation
+  - Built export boundary defense-in-depth sanitization in ExportValidatorImpl: unconditionally redacting passwords, PINs, OTPs, and Luhn-matching credit card PANs before CSV emission
+  - Integrated Storage Access Framework (SAF) via ActivityResultContracts.CreateDocument("text/csv")
+  - Built Material 3 ExportScreen with security disclosure card, session scope selector, progress bar, and completion summary
+  - Added 5 test suites / 18 tests: ExportValidatorTest, CsvEventExporterTest, ExportSessionUseCaseTest, ExportViewModelTest, ExportFlowIntegrationTest
+  - Verified 46 test suites / 248 unit tests passing (100% pass rate)
+
+✓ Phase 16 completed:
+  - Implemented single session deletion, bulk sessions deletion, complete application data reset, confirmation safety gates, and cascading event cleanup (SRS.md §55, Architecture.md §50, IMPLEMENTATION_PLAN.md §55, DEC-030)
+  - Built domain use cases: DeleteSessionUseCase (session and cascading events deletion), DeleteAllSessionsUseCase (bulk session and event purge), DeleteAllApplicationDataUseCase (storage purge + DataStore preferences reset)
+  - Multi-layer cascading defense-in-depth: explicit repository purge queries combined with SQLite Room foreign key cascade constraints
+  - Extended SessionManager with onSessionDeleted(sessionId) and resetSessionState() to atomically reset in-memory state and trigger SessionGate blocking if the active session is deleted
+  - Upgraded SettingsScreen & SettingsViewModel: storage overview card with live event counts (Room observeEventCounts), input logging switches (Keyboard & Accessibility), session inventory with delete actions, and Danger Zone card with two-step Material 3 confirmation dialogs
+  - Added 6 test suites / 18 unit tests: DeleteSessionUseCaseTest, DeleteAllSessionsUseCaseTest, DeleteAllApplicationDataUseCaseTest, SettingsViewModelTest, SettingsFlowIntegrationTest, CascadingDeletionTest
+  - Verified 52 test suites / 266 unit tests passing (100% pass rate in ~6s)
+  - Verified clean debug (app-debug.apk: 50,124,389 bytes) and R8 release (app-release.apk: 24,542,904 bytes) builds
 ```
 
 ---
 
 # 7. Next Tasks
 
-Next tasks for Phase 14 (Statistics):
+Next tasks for Phase 17 (Controlled Application Use Test Screen):
 
 ```text
-1. Begin Phase 14 (Statistics) per IMPLEMENTATION_PLAN.md §53, SRS.md §51, and Architecture.md §57.
-
-2. Design and implement Room SQL aggregate queries in InteractionEventDao for:
-   - Global and per-session aggregate metrics (total events, keyboard typing count, accessibility interaction count, distinct applications count).
-   - Application breakdown (per-package event counts, percentage share, top active applications).
-   - Hourly activity distribution (events per hour of day 0–23 for circadian analysis).
-
-3. Create domain models in domain/model/ (InteractionStatistics, AppUsageStats, HourlyDistribution).
-
-4. Expose statistics flows and suspend queries in EventRepository and EventRepositoryImpl.
-
-5. Implement StatisticsViewModel coordinating reactive statistics observation, session selection, and time-range filtering.
-
-6. Build Material 3 StatisticsScreen displaying metrics cards, application distribution list/bars, and hourly activity visualization.
-
-7. Write comprehensive unit and integration tests for statistics calculations and UI state.
-
-8. Update decision.md, tech.md, flow.md, and PROGRESS.md in required sequence.
+1. Begin Phase 17 per IMPLEMENTATION_PLAN.md §56 and SRS.md AC-29, AC-30.
+2. Build dedicated in-app test screen with controlled input fields representing ground truth:
+   - Normal text
+   - Email
+   - URL
+   - Number
+   - Multiline
+   - Password (redaction verification)
+   - PIN (redaction verification)
+3. Connect screen to navigation and provide test inputs for manual/automated verification.
+4. Verify IME capture and privacy filtering invariants against known ground-truth inputs.
+5. Update decision.md, tech.md, flow.md, and PROGRESS.md in required sequence.
 ```
+
 
 # 8. Current Technology
 

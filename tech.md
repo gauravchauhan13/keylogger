@@ -462,7 +462,40 @@ User Tap "Export Data" in ExportScreen
 
 ---
 
+## Data Management Subsystem
+
+```text
+User Destructive Action in SettingsScreen
+               │
+               ├── Individual Session Delete
+               │     └── DeleteSessionUseCase
+               │           ├── EventRepository.deleteEventsForSession(sessionId) [Cascading Cleanup]
+               │           ├── SessionRepository.deleteSession(sessionId)
+               │           └── SessionManager.onSessionDeleted(sessionId) [In-Memory Reset]
+               │
+               ├── Bulk Session Delete
+               │     └── DeleteAllSessionsUseCase
+               │           ├── EventRepository.deleteAllEvents()
+               │           ├── SessionRepository.deleteAllSessions()
+               │           └── SessionManager.resetSessionState()
+               │
+               └── Full Application Data Reset
+                     └── DeleteAllApplicationDataUseCase
+                           ├── EventRepository.deleteAllEvents()
+                           ├── SessionRepository.deleteAllSessions()
+                           ├── SessionManager.resetSessionState()
+                           └── PreferencesRepository.clearAllPreferences()
+```
+
+- Multi-Layer Cascading Purge: While SQLite schema foreign keys enforce `onDelete = ForeignKey.CASCADE`, explicit use case queries guarantee complete event cleanup as defense-in-depth across SQLite and room drivers.
+- In-Memory Synchronization: `SessionManager` immediately transitions state from `ACTIVE` to `INACTIVE` when the active session is deleted, causing `SessionGate` to drop incoming input events immediately.
+- Confirmation Safety Gate: Destructive actions require explicit, two-step confirmation dialogs via Material 3 `AlertDialog` with red warning indicators before execution.
+- Reactive Metrics: `SettingsScreen` continuously observes `EventRepository.observeEventCounts(null)` and `SessionRepository.observeAllSessions()` for instant UI state synchronization without polling.
+
+---
+
 ## Dependencies (Pinned)
+
 
 | Dependency | Exact Version | Purpose | Required? | APK Impact |
 |---|---|---|---|---|

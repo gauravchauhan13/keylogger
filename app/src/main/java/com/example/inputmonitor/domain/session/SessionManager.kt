@@ -64,4 +64,15 @@ interface SessionManager {
      * Restores an active or paused session if one was persisted prior to application process restart.
      */
     suspend fun restoreSessionIfActive(): MonitoringSession?
+
+    /**
+     * Resets active session state if the deleted session was the active or paused session.
+     */
+    suspend fun onSessionDeleted(sessionId: String) {}
+
+    /**
+     * Completely resets in-memory session tracking back to INACTIVE and clears active session reference.
+     */
+    suspend fun resetSessionState() {}
 }
+

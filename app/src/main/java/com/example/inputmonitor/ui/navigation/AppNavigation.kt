@@ -211,11 +211,38 @@ fun AppNavigation(
         }
 
         composable(Screen.Settings.route) {
-            SettingsScreen(
-                onNavigateBack = {
-                    navController.popBackStack()
-                }
+            val settingsViewModel: com.example.inputmonitor.ui.settings.SettingsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                factory = com.example.inputmonitor.ui.settings.SettingsViewModel.provideFactory(
+                    sessionRepository = container.sessionRepository,
+                    eventRepository = container.eventRepository,
+                    preferencesRepository = container.preferencesRepository,
+                    deleteSessionUseCase = container.deleteSessionUseCase,
+                    deleteAllSessionsUseCase = container.deleteAllSessionsUseCase,
+                    deleteAllApplicationDataUseCase = container.deleteAllApplicationDataUseCase,
+                    dispatchers = container.dispatchers
+                )
+            )
+
+            val settingsUiState by settingsViewModel.uiState.collectAsState()
+
+            com.example.inputmonitor.ui.settings.SettingsScreen(
+                uiState = settingsUiState,
+                onNavigateBack = { navController.popBackStack() },
+                onKeyboardLoggingToggle = { settingsViewModel.setKeyboardLoggingEnabled(it) },
+                onAccessibilityLoggingToggle = { settingsViewModel.setAccessibilityLoggingEnabled(it) },
+                onRequestDeleteSession = { settingsViewModel.requestDeleteSession(it) },
+                onConfirmDeleteSession = { settingsViewModel.confirmDeleteSession() },
+                onDismissDeleteSessionDialog = { settingsViewModel.dismissDeleteSessionDialog() },
+                onRequestDeleteAllSessions = { settingsViewModel.requestDeleteAllSessions() },
+                onConfirmDeleteAllSessions = { settingsViewModel.confirmDeleteAllSessions() },
+                onDismissDeleteAllSessionsDialog = { settingsViewModel.dismissDeleteAllSessionsDialog() },
+                onRequestDeleteAllData = { settingsViewModel.requestDeleteAllData() },
+                onConfirmDeleteAllData = { settingsViewModel.confirmDeleteAllData() },
+                onDismissDeleteAllDataDialog = { settingsViewModel.dismissDeleteAllDataDialog() },
+                onDismissUserMessage = { settingsViewModel.dismissUserMessage() },
+                onDismissError = { settingsViewModel.dismissError() }
             )
         }
     }
 }
+
