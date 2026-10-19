@@ -1497,6 +1497,30 @@ Positive:
 Negative:
 - None.
 
+---
+
+### DEC-036: Consolidated UI Date/Time Utilities and Code Duplication Elimination
+
+Date: 2026-10-19
+Status: Decided
+
+Context:
+Static code audit identified duplicate `SimpleDateFormat` instantiations in composables (`DashboardScreen`, `StatisticsScreen`, `TestBenchScreen`, `ExportScreen`, and `TestBenchViewModel`), causing redundant object allocations per recomposition/list item. Additionally, variable shadowing of `context` and `container` in `AppNavigation` and broken temporary code artifacts were identified and eliminated.
+
+Decision:
+1. Created `com.example.inputmonitor.ui.util.DateTimeUtils` providing standardized date, time, and duration formatting functions.
+2. Refactored `DashboardScreen`, `StatisticsScreen`, `TestBenchScreen`, `ExportScreen`, and `TestBenchViewModel` to use `DateTimeUtils`.
+3. Removed redundant variable shadowing in `AppNavigation`.
+4. Implemented unit test suite `DateTimeUtilsTest` (8 tests) bringing total unit tests to 313 across 59 suites (100% pass rate).
+
+Consequences:
+Positive:
+- Zero redundant `SimpleDateFormat` allocations during UI recomposition.
+- Single source of truth for UI date/time and duration formatting.
+- Unit test suite expanded to 313 tests with 100% pass rate.
+Negative:
+- None.
+
 
 
 

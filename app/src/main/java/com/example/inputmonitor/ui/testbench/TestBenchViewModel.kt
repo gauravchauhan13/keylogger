@@ -19,9 +19,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.example.inputmonitor.ui.util.DateTimeUtils
 
 /**
  * ViewModel for the Controlled Application Use Test Screen (IMPLEMENTATION_PLAN.md §56, SRS.md §66, AC-29, AC-30).
@@ -129,7 +127,7 @@ class TestBenchViewModel(
     fun startQuickTestSession() {
         viewModelScope.launch(dispatchers.io) {
             try {
-                val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                val timestamp = DateTimeUtils.generateFileTimestamp()
                 startMonitoringSessionUseCase("TestBench_$timestamp", "Controlled Ground-Truth IME Test Run")
                 _feedbackMessage.value = "Test monitoring session started."
             } catch (t: Throwable) {

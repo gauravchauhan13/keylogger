@@ -51,9 +51,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.inputmonitor.domain.export.ExportResult
+import com.example.inputmonitor.ui.util.DateTimeUtils
 import java.text.NumberFormat
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 
 /**
@@ -276,11 +275,12 @@ fun ExportScreen(
             // Primary Action Button
             Button(
                 onClick = {
-                    val dateTag = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+                    val dateTag = DateTimeUtils.generateFileTimestamp()
                     val safeSessionName = uiState.selectedSessionName
+                    val cleanSessionName = safeSessionName
                         .replace(" ", "_")
                         .replace("[^a-zA-Z0-9_-]".toRegex(), "")
-                    val suggestedFilename = "inputmonitor_${safeSessionName}_$dateTag.csv"
+                    val suggestedFilename = "inputmonitor_${cleanSessionName}_$dateTag.csv"
                     createDocumentLauncher.launch(suggestedFilename)
                 },
                 enabled = uiState.canExport,

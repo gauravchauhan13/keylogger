@@ -49,8 +49,7 @@ import androidx.compose.ui.unit.sp
 import com.example.inputmonitor.domain.model.AppUsageStat
 import com.example.inputmonitor.domain.model.HourlyActivityStat
 import com.example.inputmonitor.domain.model.StatisticsSummary
-import java.text.SimpleDateFormat
-import java.util.Date
+import com.example.inputmonitor.ui.util.DateTimeUtils
 import java.util.Locale
 
 /**
@@ -644,24 +643,13 @@ private fun EmptyStatisticsView(
 }
 
 private fun formatTimestamp(timestamp: Long): String {
-    val formatter = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
-    return formatter.format(Date(timestamp))
+    return DateTimeUtils.formatShortDate(timestamp)
 }
 
 private fun formatTimeOnly(timestamp: Long): String {
-    val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
-    return formatter.format(Date(timestamp))
+    return DateTimeUtils.formatTimeOnly(timestamp)
 }
 
 private fun formatDuration(minutes: Double): String {
-    if (minutes < 1.0) {
-        val seconds = (minutes * 60).toInt()
-        return "${seconds}s"
-    }
-    if (minutes < 60.0) {
-        return String.format(Locale.US, "%.1fm", minutes)
-    }
-    val hours = (minutes / 60.0).toInt()
-    val remMin = (minutes % 60.0).toInt()
-    return "${hours}h ${remMin}m"
+    return DateTimeUtils.formatDuration(minutes)
 }

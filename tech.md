@@ -643,5 +643,21 @@ See DEC-035, IMPLEMENTATION_PLAN.md §62, Architecture.md §84, TESTING.md §26.
    - Method: `onEvaluateInputViewShown(): Boolean = true`
    - Mechanism: Overrides Android framework default (which hides virtual keyboard when PC hardware keyboard is detected on emulators), ensuring consistent keyboard rendering across all environments.
 
+---
+
+## UI Date/Time and Formatting Utilities (DEC-036)
+
+- Class: `com.example.inputmonitor.ui.util.DateTimeUtils`
+- Purpose: Centralizes date, time, duration, and session name formatting across UI composables to eliminate repeated `SimpleDateFormat` instantiations during recomposition frames.
+- Standard Formats:
+  - `formatSessionStart(timestamp)`: `"HH:mm:ss (yyyy-MM-dd)"`
+  - `formatDateTime(timestamp)`: `"yyyy-MM-dd HH:mm:ss"`
+  - `formatShortDate(timestamp)`: `"MMM d, HH:mm"`
+  - `formatTimeOnly(timestamp)`: `"HH:mm"`
+  - `formatDuration(minutes)`: Adaptive format (`"45s"`, `"12.5m"`, or `"2h 15m"`)
+  - `generateDefaultSessionName()`: `"Session_yyyyMMdd_HHmm"`
+  - `generateFileTimestamp()`: `"yyyyMMdd_HHmmss"`
+- Thread Safety: Immutable utility methods format cleanly on caller threads without shared mutable state.
+
 
 

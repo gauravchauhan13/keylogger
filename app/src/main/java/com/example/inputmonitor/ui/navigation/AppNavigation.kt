@@ -76,9 +76,6 @@ fun AppNavigation(
         }
 
         composable(Screen.Dashboard.route) {
-            val context = androidx.compose.ui.platform.LocalContext.current
-            val container = (context.applicationContext as com.example.inputmonitor.MonitoringApplication).container
-
             val dashboardViewModel: com.example.inputmonitor.ui.dashboard.DashboardViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
                 factory = com.example.inputmonitor.ui.dashboard.DashboardViewModel.provideFactory(
                     startUseCase = container.startMonitoringSessionUseCase,

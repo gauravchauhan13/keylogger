@@ -60,9 +60,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.inputmonitor.domain.model.SessionState
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.example.inputmonitor.ui.util.DateTimeUtils
 
 /**
  * Controlled Application Use Test Screen (IMPLEMENTATION_PLAN.md §56, SRS.md §66, design.md §Screen 6).
@@ -636,7 +634,7 @@ private fun SubmissionResultDialog(
     result: TestBenchSubmissionResult,
     onDismiss: () -> Unit
 ) {
-    val dateStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(result.timestamp))
+    val dateStr = DateTimeUtils.formatDateTime(result.timestamp)
 
     AlertDialog(
         onDismissRequest = onDismiss,

@@ -50,9 +50,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.inputmonitor.domain.model.MonitoringSession
 import com.example.inputmonitor.domain.model.SessionState
+import com.example.inputmonitor.ui.util.DateTimeUtils
 import java.text.NumberFormat
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 
 /**
@@ -228,9 +227,8 @@ fun DashboardScreen(
                             text = session.name,
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
                         )
-                        val timeFormat = SimpleDateFormat("HH:mm:ss (yyyy-MM-dd)", Locale.getDefault())
                         Text(
-                            text = "Started: ${timeFormat.format(Date(session.startTime))}",
+                            text = "Started: ${DateTimeUtils.formatSessionStart(session.startTime)}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -435,8 +433,7 @@ fun DashboardScreen(
 
     if (showStartDialog) {
         var sessionName by remember {
-            val dateStr = SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault()).format(Date())
-            mutableStateOf("Session_$dateStr")
+            mutableStateOf(DateTimeUtils.generateDefaultSessionName())
         }
         var notes by remember { mutableStateOf("") }
 

@@ -1099,6 +1099,7 @@ DEC-032: Dedicated Performance Optimization Pass, Operational Budgets, Dead Code
 DEC-033: Large Database Scalability, SQLCipher AES-256 Storage Model, and Composite Index Optimization
 DEC-034: Android Studio Gradle JVM Alignment and Root Clean Task Registration
 DEC-035: Android Version Testing, Android 16 (Baklava API 36) Live Verification, SQLCipher ART Native JNI Linking, and IME Input View Evaluation
+DEC-036: Consolidated UI Date/Time Utilities and Code Duplication Elimination
 ```
 
 ---
