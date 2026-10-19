@@ -42,8 +42,18 @@ class ContextResolverImpl(
                 packageName
             }
 
+            if (labelCache.size >= MAX_CACHE_ENTRIES) {
+                val oldest = labelCache.keys.firstOrNull()
+                if (oldest != null) {
+                    labelCache.remove(oldest)
+                }
+            }
             labelCache[packageName] = label
             ApplicationContextInfo(packageName = packageName, applicationLabel = label)
         }
+    }
+
+    companion object {
+        const val MAX_CACHE_ENTRIES = 256
     }
 }

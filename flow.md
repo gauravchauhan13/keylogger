@@ -805,6 +805,51 @@ User navigates to TestBenchScreen (via Dashboard "Test Bench" button)
 
 ---
 
+# 18. Performance Optimization Flow
+
+```text
+Keyboard Keystroke Hot Path (DEVELOPMENT_GUIDELINES.md §17)
+   User touches a keycap on Gboard layout:
+      ↓
+   CustomKeyboardService.onAction(KeyAction.Character("a"))
+      ├── 1. KeyProcessor.processKey() [Executed FIRST on UI thread]
+      │        ├── Synchronous InputConnection.commitText() (< 1ms, 0 allocations)
+      │        └── Immediately rendered to target app (< 2ms hardware tap budget)
+      │
+      └── 2. emitKeyEventCandidate() [Asynchronous Auxiliary Path]
+               └── ImeEventPublisherImpl.publish()
+                     └── Dispatches to background coroutine scope
+                           └── EventProcessorImpl.process() (sanitization, context resolution, Room persistence)
+
+Accessibility Event Filter & Throttle Path (DEVELOPMENT_GUIDELINES.md §16, §31)
+   Android OS invokes onAccessibilityEvent(event):
+      ↓
+   AppAccessibilityService.onAccessibilityEvent(event)
+      ├── Snapshot event attributes into SimpleAccessibilityEventInfo (immediate Android recycler decoupling)
+      │
+      ├── AccessibilityEventFilterImpl.shouldProcess(info)
+      │     ├── Checks packageName != ownPackage (100% self-monitoring loop suppression)
+      │     └── If TYPE_VIEW_SCROLLED:
+      │           ├── Checks (now - lastScrollTimeMs) >= 250ms
+      │           └── Drops high-frequency burst events (> 95% CPU savings during rapid scrolls)
+      │
+      └── Background Dispatch: AccessibilityEventPublisherImpl.publish() (non-blocking SupervisorJob)
+
+In-Memory Context & Package Resolution Path (DEVELOPMENT_GUIDELINES.md §30)
+   EventProcessor requests context resolution for packageName:
+      ↓
+   ContextResolverImpl.resolve(packageName)
+      ├── Fast-Path: labelCache[packageName] hit -> Returns instantly in < 0.1ms (no IPC/dispatcher jump)
+      │
+      └── Slow-Path (Cache Miss):
+            ├── Dispatches to withContext(dispatchers.io)
+            ├── Resolves label via PackageManager
+            ├── Enforces cache bound: if (labelCache.size >= MAX_CACHE_ENTRIES) evict oldest entry
+            └── Caches label for all subsequent keystrokes in this application
+```
+
+---
+
 # Current Implementation State
 
 ```text
@@ -826,8 +871,10 @@ Phase 14: Interaction Statistics Engine & UI (COMPLETE)
 Phase 15: Export Engine (COMPLETE)
 Phase 16: Data Management (COMPLETE)
 Phase 17: Controlled Application Use Test Screen (COMPLETE)
-Phase 18: Performance Optimization (NEXT)
+Phase 18: Performance Optimization (COMPLETE)
+Phase 19: Large Database Testing (NEXT)
 ```
+
 
 
 

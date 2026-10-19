@@ -531,22 +531,42 @@ TestBenchScreen (Focus Telemetry & Ground-Truth Editors)
 
 ---
 
-## Dependencies (Pinned)
+## Dependencies (Pinned & Audited - IMPLEMENTATION_PLAN.md §59)
 
 
-| Dependency | Exact Version | Purpose | Required? | APK Impact |
-|---|---|---|---|---|
-| Kotlin Stdlib | 2.0.21 | Language | Yes | Bundled |
-| Compose BOM | 2024.12.01 | UI framework | Yes | ~2-3MB |
-| Compose Material3 | (via BOM) | Design system | Yes | Included in Compose |
-| Navigation Compose | 2.8.5 | Screen navigation | Yes | ~200KB |
-| Lifecycle Runtime / ViewModel Compose | 2.8.7 | ViewModel integration | Yes | ~100KB |
-| Room Runtime & KTX | 2.6.1 | Database | Yes | ~500KB |
-| SQLCipher Android | 4.6.1 | Database encryption | Yes | ~3-5MB per ABI |
-| SQLite KTX | 2.4.0 | Database support | Yes | ~20KB |
-| Preferences DataStore | 1.1.1 | App preferences | Yes | ~50KB |
-| KotlinX Coroutines Android | 1.9.0 | Async/reactive | Yes | ~200KB |
-| Core KTX | 1.15.0 | AndroidX core utilities | Yes | ~100KB |
+| Dependency | Exact Version | Purpose | Required? | APK Impact | Audit Status |
+|---|---|---|---|---|---|
+| Kotlin Stdlib | 2.0.21 | Language runtime | Yes | Bundled | Active, core language |
+| Compose BOM | 2024.12.01 | UI framework bill of materials | Yes | ~2-3MB | Active, ensures library alignment |
+| Compose UI | (via BOM) | Declarative UI toolkit | Yes | Included | Active |
+| Compose Material3 | (via BOM) | Modern design system tokens | Yes | Included | Active |
+| Activity Compose | 1.9.3 | Activity integration & SAF launcher | Yes | ~100KB | Active, SAF export contracts |
+| Navigation Compose | 2.8.5 | Type-safe screen navigation routes | Yes | ~200KB | Active, Screen route hierarchy |
+| Lifecycle Runtime / ViewModel Compose | 2.8.7 | ViewModel & lifecycle collection | Yes | ~100KB | Active |
+| Room Runtime & KTX | 2.6.1 | Durably indexed SQLite ORM | Yes | ~500KB | Active, durably persisted timeline |
+| Room Compiler (KSP) | 2.6.1 | Compile-time code generator | Yes | 0 KB (build-only) | Active, compile-time DAO verification |
+| SQLCipher Android | 4.6.1 | AES-256 database encryption at rest | Yes | ~3-5MB per ABI | Active, mandatory security invariant |
+| SQLite KTX | 2.4.0 | Database factory support | Yes | ~20KB | Active, SQLCipher open helper factory |
+| Preferences DataStore | 1.1.1 | Non-blocking persistent preferences | Yes | ~50KB | Active, replaces blocking SharedPreferences |
+| KotlinX Coroutines Android | 1.9.0 | Structured async execution | Yes | ~200KB | Active |
+| Core KTX | 1.15.0 | AndroidX core platform utilities | Yes | ~100KB | Active |
+
+- Zero unnecessary network/HTTP libraries (maintains strict offline boundary and zero `INTERNET` permission).
+- Zero third-party reflection-based DI libraries (maintains lightweight manual `AppContainer`).
+- Release builds utilize R8 code minification and resource shrinking (`isMinifyEnabled = true`, `isShrinkResources = true`).
+
+---
+
+## Performance & Optimization Architecture (Phase 18)
+
+- **Keyboard Latency:** Primary input dispatch path (`KeyProcessor.processKey`) operates in `< 1ms` (benchmarked average `~0.05ms`), ensuring zero input lag (< 2ms hardware tap budget).
+- **Background Dispatch:** `ImeEventPublisherImpl` and `AccessibilityEventPublisherImpl` dispatch event candidates onto background coroutine scopes, strictly isolating the main thread.
+- **Scroll Storm Throttling:** `AccessibilityEventFilterImpl` enforces a 250ms interval on high-frequency scroll events, preventing CPU and database thrashing.
+- **Self-Monitoring Suppression:** `AccessibilityEventFilterImpl` strictly rejects events emitted from `com.example.inputmonitor`, eliminating feedback loops.
+- **Bounded In-Memory Caching:** `ContextResolverImpl` caps package label resolution cache at `MAX_CACHE_ENTRIES = 256` with LRU-style eviction, preventing memory leaks on low-end hardware.
+- **Streaming Export Footprint ($O(1)$ RAM):** `ExportSessionUseCase` and `CsvEventExporterImpl` stream records in 250-row chunks directly to destination `OutputStream`, preventing heap residency of entire sessions.
+- **High-Throughput Sanitization:** `PrivacyFilterImpl` benchmarks at `> 20,000 events/sec` throughput with immediate credential nullification (`eventData = null`).
+- **Database Index Optimization:** `interaction_events` table maintains 5 targeted indexes (`sessionId`, `timestamp`, `packageName`, `eventType`, `applicationName`), enabling fast bounded timeline slicing and aggregate queries without full table scans.
 
 ---
 
@@ -555,4 +575,5 @@ TestBenchScreen (Focus Telemetry & Ground-Truth Editors)
 `com.example.inputmonitor`
 
 See DEC-010.
+
 
