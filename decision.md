@@ -1393,8 +1393,45 @@ Positive:
 - Composite index `(sessionId, timestamp)` accelerates timeline scrolling and export paging.
 - Verified $O(1)$ RAM boundedness for streaming export under large databases.
 - 57 test suites and 297 unit tests passing with 100% pass rate.
+---
+
+## DEC-034 — Android Studio Gradle JVM Alignment and Root Clean Task Registration
+
+Date:
+2026-10-19
+
+Status:
+Accepted
+
+Context:
+When syncing the project within Android Studio, the IDE's phased build action failed with:
+`Could not run phased build action using connection to Gradle distribution... Gradle build daemon has been stopped: stop command received`.
+Inspection of `.idea/gradle.xml` revealed that Android Studio was configured to run Gradle via `ms-17` (Microsoft OpenJDK 17), which was not installed on the system (the host machine and Android Studio installation utilize Java 25 at `C:\Program Files\Java\jdk-25` and `D:\Android\jbr`). Furthermore, the root `build.gradle.kts` lacked the standard root `clean` task registration.
+
+Decision:
+1. In `build.gradle.kts`:
+   - Registered the standard root `clean` task:
+     ```kotlin
+     tasks.register("clean", Delete::class) {
+         delete(rootProject.layout.buildDirectory)
+     }
+     ```
+2. In `.idea/gradle.xml`:
+   - Updated `gradleJvm` from `ms-17` to `#JAVA_HOME` to align Android Studio's Gradle Tooling API launcher directly with the installed Java 25 runtime.
+3. Verification:
+   - Executed `.\gradlew.bat clean assembleDebug` which completed successfully in 36s.
+   - All 57 test suites and 297 unit tests continue to pass with 100% success rate.
+
+Reason:
+- Resolves Gradle daemon termination during Android Studio project sync.
+- Guarantees seamless IDE tooling compatibility alongside CLI builds.
+
+Consequences:
+Positive:
+- Android Studio Gradle sync executes without daemon termination.
+- Root `clean` task is registered for IDE and CI workflows.
 Negative:
-- Additional composite index adds ~50 bytes per row to database index footprint, well within allowable device storage budget.
+- None.
 
 
 
