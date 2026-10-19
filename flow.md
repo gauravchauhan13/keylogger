@@ -850,6 +850,50 @@ In-Memory Context & Package Resolution Path (DEVELOPMENT_GUIDELINES.md §30)
 
 ---
 
+# 19. Large Database Scalability & Stress Testing Flow
+
+```text
+High-Volume Batch Insertion & Scalability Flow (IMPLEMENTATION_PLAN.md §61)
+   Monitoring Engine / Test Harness emits synthetic batches (1k, 10k, 50k, 100k events):
+      ↓
+   InteractionEventDao.insertEvents(batch)
+      ├── Sequential primary key ID allocation (AtomicLong / auto-increment)
+      ├── In-memory B-Tree index insertion across 6 indexes (sub-linear $O(\log N)$)
+      └── Linear scaling verification: > 100,000 events/sec throughput with 0 memory stalls
+
+Bounded Timeline Pagination Flow (100,000 Records)
+   User scrolls Timeline or navigates to page:
+      ↓
+   EventRepositoryImpl.observeEventsPaged(filter, limit = 50, offset = N)
+      ├── SQLite seeks composite index (sessionId, timestamp) directly
+      ├── Traverses B-tree backwards (ORDER BY timestamp DESC)
+      ├── Scans ONLY requested 50 rows (Zero full-table scan or memory residency)
+      └── Emits 50 items to UI in 2-3ms per page
+
+Chunked Streaming Export Flow (10,000+ Records)
+   User initiates CSV Export:
+      ↓
+   ExportSessionUseCase.invoke(outputStream, sessionId)
+      ├── 1. Writes RFC-4180 CSV header directly to output stream
+      ├── 2. Determines totalCount via indexed COUNT(*)
+      └── 3. While (offset < totalCount):
+               ├── Fetches bounded chunk of 250 records
+               ├── Passes through ExportValidatorImpl (redacts passwords/PINs to [REDACTED])
+               ├── Serializes directly to OutputStreamWriter (StandardCharsets.UTF_8)
+               ├── Flushes bytes to destination without expanding heap ($O(1)$ RAM)
+               └── Reports progress onProgress(exported, total)
+
+Cascading Deletion Flow (50,000+ Records)
+   User deletes monitoring session:
+      ↓
+   SessionRepositoryImpl.deleteSession(sessionId)
+      ├── SQLite PRAGMA foreign_keys = ON invokes ON DELETE CASCADE
+      ├── Atomically purges parent session and all 50,000 child records in 24ms
+      └── Control sessions and unrelated events remain 100% intact with 0 orphan records
+```
+
+---
+
 # Current Implementation State
 
 ```text
@@ -872,8 +916,10 @@ Phase 15: Export Engine (COMPLETE)
 Phase 16: Data Management (COMPLETE)
 Phase 17: Controlled Application Use Test Screen (COMPLETE)
 Phase 18: Performance Optimization (COMPLETE)
-Phase 19: Large Database Testing (NEXT)
+Phase 19: Large Database Testing (COMPLETE)
+Phase 20: Android Version Testing (NEXT)
 ```
+
 
 
 

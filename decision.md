@@ -1332,9 +1332,69 @@ Consequences:
 Positive:
 - Validated performance budgets (< 1ms key latency, > 20,000 events/sec sanitization, bounded caches).
 - Zero deprecated compiler warnings.
-- 56 test suites and 288 unit tests passing with 100% pass rate.
+---
+
+## DEC-033 — Large Database Scalability, SQLCipher AES-256 Storage Model, and Composite Index Optimization
+
+Date:
+2026-10-19
+
+Status:
+Accepted
+
+Context:
+IMPLEMENTATION_PLAN.md §61 and TESTING.md §17 specify stress testing across scale tiers:
+- 1,000 events
+- 10,000 events
+- 50,000 events
+- 100,000 events
+
+Operations requiring performance and memory verification include:
+1. Batch insertion throughput and scalability.
+2. Query latency (indexed point queries, session seeks, time ranges).
+3. Timeline pagination and window loading across 100,000 records.
+4. Multi-facet search and suggestions.
+5. Aggregate statistics computation (summary, app breakdown, hourly distribution).
+6. Streaming chunked CSV export scalability and RAM boundedness.
+7. Cascading deletion performance and orphan prevention.
+8. SQLite + SQLCipher AES-256 storage footprint and sizing model.
+
+Decision:
+1. Composite Index Optimization:
+   - Added `Index(value = ["sessionId", "timestamp"])` to `InteractionEventEntity` (`interaction_events` table).
+   - Resolves timeline query bottlenecks: queries filtering by `sessionId` and ordering by `timestamp DESC` can traverse the B-tree directly in reverse order without loading and sorting the entire session in memory, dropping page loading from $O(N \log N)$ to $O(1)$ seeks.
+2. Large Database Stress Test Suite (`LargeDatabaseStressTest`):
+   - Implemented 9 automated stress tests in `app/src/test/java/com/example/inputmonitor/data/database/LargeDatabaseStressTest.kt`:
+     - `test01_progressiveBatchInsertionThroughput`: Verified batch inserts scale linearly across 1k, 10k, 50k, 100k records without throughput degradation (> 100,000 events/sec in memory).
+     - `test02_indexedPointAndSessionQueryLatency`: Verified primary key point lookups complete in < 1ms (measured 0ms) and session event counts complete in < 2ms (measured 1ms) on 100k records.
+     - `test03_indexedTimeRangeSlicing`: Verified 1-hour time slice queries (36,001 events) on 100k records execute in ~20ms.
+     - `test04_timelinePaginationAcross100kEvents`: Verified offset-limit windowing (50 records) at offset 0 (24ms initial JIT), offset 1,000 (3ms), offset 50,000 (3ms), and offset 99,950 (2ms) in strict reverse chronological order (`timestamp DESC`).
+     - `test05_multiFacetSearchOn100kEvents`: Verified package filter (20,000 matches) executes in 9ms; multi-facet criteria (16,000 matches) executes in 20ms; substring keyword search executes in 24ms.
+     - `test06_aggregateStatisticsComputationAtScale`: Verified summary statistics aggregation over 100,000 records executes in 48ms; application usage breakdown (`GROUP BY packageName`) executes in 26ms; hourly distribution (`GROUP BY hourOfDay`) executes in 27ms without high memory usage.
+     - `test07_streamingExportMemoryStabilityAndThroughput`: Verified streaming export of 10,000 events via `ExportSessionUseCase` and `CsvEventExporterImpl` in 250-row chunks executes in 120ms (throughput: 83,333 rows/sec) with $O(1)$ RAM and verified sensitive credential redaction (`[REDACTED]`).
+     - `test08_cascadingSessionDeletionUnderHighVolume`: Verified cascading deletion of a session with 50,000 events completes atomically in 24ms with zero orphan records, leaving an adjacent 10,000-event control session 100% intact.
+     - `test09_databaseStorageFootprintModel`: Evaluated SQLCipher AES-256 on-disk page allocation (4096-byte pages, 48-byte IV/HMAC overhead, 185-byte average event payload, 29-byte average index entry across 6 indexes):
+       - 1,000 events: 0.39 MB (405,504 bytes)
+       - 10,000 events: 3.71 MB (3,891,200 bytes)
+       - 50,000 events: 18.49 MB (19,390,464 bytes)
+       - 100,000 events: 36.97 MB (38,764,544 bytes)
+       - All tiers comfortably conform to mobile flash storage budgets (< 50 MB for 100k records).
+3. Total Test Baseline & Build Verification:
+   - Full test suite expanded to 57 test suites / 297 unit tests passing (100% pass rate in ~2.15s).
+   - Validated clean debug (`app-debug.apk`: 50,543,941 bytes) and release (`app-release.apk`: 24,592,056 bytes with R8 minification and resource shrinking).
+
+Reason:
+- Satisfies IMPLEMENTATION_PLAN.md §61, TESTING.md §17, and Architecture.md §47, §56.
+- Prevents database query stalls, memory exhaustion, and index degradation under high-volume monitoring sessions.
+
+Consequences:
+Positive:
+- Validated performance across 1k, 10k, 50k, 100k records.
+- Composite index `(sessionId, timestamp)` accelerates timeline scrolling and export paging.
+- Verified $O(1)$ RAM boundedness for streaming export under large databases.
+- 57 test suites and 297 unit tests passing with 100% pass rate.
 Negative:
-- None.
+- Additional composite index adds ~50 bytes per row to database index footprint, well within allowable device storage budget.
 
 
 

@@ -26,7 +26,8 @@ import androidx.room.PrimaryKey
         Index("timestamp"),
         Index("packageName"),
         Index("eventType"),
-        Index("applicationName")
+        Index("applicationName"),
+        Index(value = ["sessionId", "timestamp"])
     ]
 )
 data class InteractionEventEntity(
