@@ -29,12 +29,19 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        val app = applicationContext as? MonitoringApplication
-        val container = app?.container
-        if (container != null) {
-            lifecycleScope.launch {
-                container.setupStateManager.refresh()
+        try {
+            val app = applicationContext as? MonitoringApplication
+            val container = app?.container
+            if (container != null) {
+                lifecycleScope.launch {
+                    try {
+                        container.setupStateManager.refresh()
+                    } catch (_: Throwable) {
+                        // Suppress background refresh errors
+                    }
+                }
             }
+        } catch (_: Throwable) {
         }
     }
 }

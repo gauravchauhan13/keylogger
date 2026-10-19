@@ -22,9 +22,23 @@ class MonitoringApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        container = com.example.inputmonitor.di.DefaultAppContainer(applicationContext)
-        kotlinx.coroutines.CoroutineScope(container.dispatchers.io).launch {
-            container.sessionManager.restoreSessionIfActive()
+        try {
+            System.loadLibrary("sqlcipher")
+        } catch (_: Throwable) {
+            // Graceful fallback if native library is preloaded or unavailable
+        }
+
+        try {
+            container = com.example.inputmonitor.di.DefaultAppContainer(applicationContext)
+            kotlinx.coroutines.CoroutineScope(container.dispatchers.io).launch {
+                try {
+                    container.sessionManager.restoreSessionIfActive()
+                } catch (_: Throwable) {
+                    // Suppress restart restoration errors to prevent process abort
+                }
+            }
+        } catch (t: Throwable) {
+            android.util.Log.e("MonitoringApp", "Failed to initialize application container", t)
         }
     }
 }

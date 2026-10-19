@@ -39,6 +39,10 @@ interface EventRepository {
         kotlinx.coroutines.flow.flowOf(emptyList())
     fun observeSearchSuggestions(query: String, limit: Int = 5): Flow<List<com.example.inputmonitor.domain.model.SearchSuggestion>> =
         kotlinx.coroutines.flow.flowOf(emptyList())
+    fun observeStatistics(sessionId: String? = null): Flow<com.example.inputmonitor.domain.model.InteractionStatistics> =
+        kotlinx.coroutines.flow.flowOf(com.example.inputmonitor.domain.model.InteractionStatistics())
+    suspend fun getStatistics(sessionId: String? = null): com.example.inputmonitor.domain.model.InteractionStatistics =
+        com.example.inputmonitor.domain.model.InteractionStatistics()
     suspend fun deleteEventsForSession(sessionId: String): Boolean
     suspend fun deleteAllEvents(): Boolean
 }

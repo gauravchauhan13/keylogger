@@ -28,7 +28,7 @@ class CustomKeyboardService : InputMethodService() {
     // Allows test harness injection; falls back to AppContainer singleton
     var publisherOverride: ImeEventPublisher? = null
     internal val publisher: ImeEventPublisher?
-        get() = publisherOverride ?: (application as? MonitoringApplication)?.container?.imeEventPublisher
+        get() = publisherOverride ?: runCatching { (application as? MonitoringApplication)?.container?.imeEventPublisher }.getOrNull()
     var inputConnectionOverride: InputConnection? = null
     var editorInfoOverride: EditorInfo? = null
 
@@ -131,7 +131,7 @@ class CustomKeyboardService : InputMethodService() {
             )
 
             pub.publish(rawEvent)
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
             // Failure tolerance: logging failures must never affect typing
         }
     }

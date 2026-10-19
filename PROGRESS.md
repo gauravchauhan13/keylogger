@@ -27,11 +27,11 @@ Overall Status:
 IN PROGRESS
 
 Current Phase:
-Phase 13 complete; ready to begin Phase 14 (Statistics)
+Phase 14 complete; ready to begin Phase 15 (Export)
 
 Current Objective:
-Phase 13 (Search) complete: Database-backed search across permitted application fields (applicationName, packageName, eventType, sessionId, non-null eventData) per SRS.md §50, SQLite index acceleration via index_interaction_events_applicationName, distinct search suggestions directly from Room, 300ms debounced search engine in TimelineViewModel preventing SQLite I/O flooding while maintaining zero-lag UI keystroke responsiveness, suggestion chips strip in EventsScreen, and privacy defense-in-depth guarantee (sensitive events have null eventData and are never searchable). 39 unit test suites / 216 tests passing (100% pass rate in ~21s), clean debug (49,542,941 bytes) and R8 release (24,313,388 bytes) builds verified.
-Ready to implement Phase 14 (Statistics).
+Root-caused and eliminated all startup / permission grant crash vectors (native SQLCipher linkage, recycled AccessibilityEvent snapshotting, Keystore passphrase corruption self-healing, Throwable containment barriers). Completed Phase 14 (Statistics): Room aggregate queries (StatisticsSummaryTuple, AppUsageTuple, HourlyActivityTuple), 24-hour circadian histogram normalization, application usage distribution and velocity metrics, Material 3 StatisticsScreen (overview card, breakdown pills, 24h bar chart, app progress list, session dropdown filter), StatisticsViewModel and AppNavigation integration. 42 unit test suites / 230 unit tests passing (100% pass rate in ~21s), clean debug (49,812,129 bytes) and R8 release (24,395,308 bytes) builds verified.
+Ready to implement Phase 15 (Export).
 ```
 
 Update these values as development proceeds.
@@ -97,7 +97,7 @@ Phase-0 living documents (created and active):
 
 [✓] Phase 13 — Search
 
-[ ] Phase 14 — Statistics
+[✓] Phase 14 — Statistics
 
 [ ] Phase 15 — Export
 
@@ -130,13 +130,13 @@ Use:
 ## Currently Implementing
 
 ```text
-Ready to begin Phase 14 — Statistics.
+Ready to begin Phase 15 — Export.
 ```
 
 ## Current Goal
 
 ```text
-Implement Phase 14: Aggregate interaction statistics engine, session-specific and global metric computations, hourly activity distribution analysis, application breakdown, and Material 3 Statistics screen.
+Implement Phase 15: Local-first CSV export engine, SAF (Storage Access Framework) file creation, export safety validation, user confirmation disclosures, and zero-network privacy guarantee per SRS.md §52, Architecture.md §58, and IMPLEMENTATION_PLAN.md §54.
 ```
 
 ---
@@ -643,14 +643,14 @@ Legend:
 
 # 14. Current Performance Baseline
 
-Measured during Phase 13 Search:
+Measured during Phase 14 Statistics:
 
 ```text
 Debug APK size:
-49,542,941 bytes (~47.25 MB) — multi-ABI unminified with Room, SQLCipher, SessionManager, CustomKeyboardService, complete multi-layout engine, PrivacyFilter, EventProcessor, ContextResolver, AppAccessibilityService, SetupStateManager, DashboardScreen, EventsScreen, debounced search query engine
+49,812,129 bytes (~47.50 MB) — multi-ABI unminified with Room, SQLCipher, SessionManager, CustomKeyboardService, complete multi-layout engine, PrivacyFilter, EventProcessor, ContextResolver, AppAccessibilityService, SetupStateManager, DashboardScreen, EventsScreen, debounced search query engine, StatisticsScreen, circadian histogram engine
 
 Release APK size:
-24,313,388 bytes (~23.19 MB) — multi-ABI, R8 minified + shrunk resources
+24,395,308 bytes (~23.26 MB) — multi-ABI, R8 minified + shrunk resources
 
 Cold startup:
 TBD (measured on physical/virtual device)
@@ -699,7 +699,7 @@ Build:
 testDebugUnitTest + assembleDebug + assembleRelease
 
 Type:
-Full verification build (Debug APK + Release APK + 39 Unit test suites / 216 tests)
+Full verification build (Debug APK + Release APK + 42 Unit test suites / 230 tests)
 
 Date:
 2026-10-19
@@ -1029,6 +1029,7 @@ DEC-024: First-Run Setup State Machine, Decoupled System Status Checking, and No
 DEC-025: Dashboard Architecture, Aggregate Event Metrics, and Live Context Observation
 DEC-026: Event Timeline Architecture, Paged Room Observation, and Multi-Dimensional Filter Engine
 DEC-027: Database-Backed Search Architecture, Index Optimization, and Debounced Filtering Engine
+DEC-028: Aggregate Statistics Subsystem, 24-Hour Circadian Histogram Normalization, and Native Crash Hardening
 ```
 
 ---
@@ -1039,7 +1040,7 @@ At the end of every session there must be ONE clearly stated next action.
 
 Current:
 
-> Begin Phase 14 (Statistics): Implement aggregate metrics engine, application interaction breakdown, hourly activity distribution, and interactive Statistics screen (Architecture.md §57, IMPLEMENTATION_PLAN.md §53, SRS.md §51).
+> Begin Phase 15 (Export): Implement CSV export serialization engine, Storage Access Framework (SAF) integration, export safety re-validation, export progress and confirmation UI (Architecture.md §58, IMPLEMENTATION_PLAN.md §54, SRS.md §52).
 
 This prevents a future agent from guessing where to resume.
 

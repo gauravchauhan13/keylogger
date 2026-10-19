@@ -9,8 +9,8 @@ data class MonitoringSession(
     val startTime: Long,
     val endTime: Long? = null,
     val state: SessionState = SessionState.ACTIVE,
-    val androidVersion: String,
-    val deviceModel: String,
-    val appVersion: String,
+    val androidVersion: String = "15",
+    val deviceModel: String = "Android Device",
+    val appVersion: String = "0.1.0",
     val notes: String? = null
 )

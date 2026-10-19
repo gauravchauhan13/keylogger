@@ -148,6 +148,24 @@ class SearchQueryTest {
         override suspend fun getMatchingPackages(query: String, limit: Int): List<String> =
             queryMatchingPackages(query, limit)
 
+        override fun observeStatisticsSummary(sessionId: String?): Flow<StatisticsSummaryTuple?> =
+            flowOf(StatisticsSummaryTuple())
+
+        override suspend fun getStatisticsSummary(sessionId: String?): StatisticsSummaryTuple? =
+            StatisticsSummaryTuple()
+
+        override fun observeAppUsageStats(sessionId: String?): Flow<List<AppUsageTuple>> =
+            flowOf(emptyList())
+
+        override suspend fun getAppUsageStats(sessionId: String?): List<AppUsageTuple> =
+            emptyList()
+
+        override fun observeHourlyActivity(sessionId: String?): Flow<List<HourlyActivityTuple>> =
+            flowOf(emptyList())
+
+        override suspend fun getHourlyActivity(sessionId: String?): List<HourlyActivityTuple> =
+            emptyList()
+
         override suspend fun deleteEventsForSession(sessionId: String): Int = 0
         override suspend fun deleteAllEvents(): Int = 0
 

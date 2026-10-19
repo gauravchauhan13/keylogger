@@ -205,6 +205,80 @@ class EventRepositoryTest {
                 .take(limit)
         }
 
+        override fun observeStatisticsSummary(sessionId: String?): Flow<com.example.inputmonitor.data.dao.StatisticsSummaryTuple?> {
+            val matching = if (sessionId != null) events.filter { it.sessionId == sessionId } else events
+            val tuple = com.example.inputmonitor.data.dao.StatisticsSummaryTuple(
+                total = matching.size.toLong(),
+                keyboard = matching.count { it.source == "KEYBOARD" }.toLong(),
+                accessibility = matching.count { it.source == "ACCESSIBILITY" }.toLong(),
+                clicks = matching.count { it.eventType == "VIEW_CLICKED" }.toLong(),
+                focus = matching.count { it.eventType == "VIEW_FOCUSED" }.toLong(),
+                scrolls = matching.count { it.eventType == "VIEW_SCROLLED" }.toLong(),
+                windowChanges = matching.count { it.eventType == "WINDOW_STATE_CHANGED" || it.eventType == "WINDOWS_CHANGED" }.toLong(),
+                sensitiveSuppressions = matching.count { it.eventType == "SENSITIVE_INPUT_DETECTED" || it.inputClassification.startsWith("SENSITIVE_") }.toLong(),
+                distinctApps = matching.mapNotNull { it.packageName }.distinct().size,
+                firstTimestamp = matching.minOfOrNull { it.timestamp },
+                lastTimestamp = matching.maxOfOrNull { it.timestamp }
+            )
+            return flowOf(tuple)
+        }
+
+        override suspend fun getStatisticsSummary(sessionId: String?): com.example.inputmonitor.data.dao.StatisticsSummaryTuple? {
+            val matching = if (sessionId != null) events.filter { it.sessionId == sessionId } else events
+            return com.example.inputmonitor.data.dao.StatisticsSummaryTuple(
+                total = matching.size.toLong(),
+                keyboard = matching.count { it.source == "KEYBOARD" }.toLong(),
+                accessibility = matching.count { it.source == "ACCESSIBILITY" }.toLong(),
+                clicks = matching.count { it.eventType == "VIEW_CLICKED" }.toLong(),
+                focus = matching.count { it.eventType == "VIEW_FOCUSED" }.toLong(),
+                scrolls = matching.count { it.eventType == "VIEW_SCROLLED" }.toLong(),
+                windowChanges = matching.count { it.eventType == "WINDOW_STATE_CHANGED" || it.eventType == "WINDOWS_CHANGED" }.toLong(),
+                sensitiveSuppressions = matching.count { it.eventType == "SENSITIVE_INPUT_DETECTED" || it.inputClassification.startsWith("SENSITIVE_") }.toLong(),
+                distinctApps = matching.mapNotNull { it.packageName }.distinct().size,
+                firstTimestamp = matching.minOfOrNull { it.timestamp },
+                lastTimestamp = matching.maxOfOrNull { it.timestamp }
+            )
+        }
+
+        override fun observeAppUsageStats(sessionId: String?): Flow<List<com.example.inputmonitor.data.dao.AppUsageTuple>> {
+            val matching = if (sessionId != null) events.filter { it.sessionId == sessionId } else events
+            val grouped = matching.filter { it.packageName != null }
+                .groupBy { it.packageName!! }
+                .map { (pkg, evts) ->
+                    com.example.inputmonitor.data.dao.AppUsageTuple(
+                        packageName = pkg,
+                        applicationName = evts.firstNotNullOfOrNull { it.applicationName } ?: pkg,
+                        eventCount = evts.size.toLong(),
+                        lastActiveTimestamp = evts.maxOf { it.timestamp }
+                    )
+                }
+                .sortedByDescending { it.eventCount }
+            return flowOf(grouped)
+        }
+
+        override suspend fun getAppUsageStats(sessionId: String?): List<com.example.inputmonitor.data.dao.AppUsageTuple> {
+            val matching = if (sessionId != null) events.filter { it.sessionId == sessionId } else events
+            return matching.filter { it.packageName != null }
+                .groupBy { it.packageName!! }
+                .map { (pkg, evts) ->
+                    com.example.inputmonitor.data.dao.AppUsageTuple(
+                        packageName = pkg,
+                        applicationName = evts.firstNotNullOfOrNull { it.applicationName } ?: pkg,
+                        eventCount = evts.size.toLong(),
+                        lastActiveTimestamp = evts.maxOf { it.timestamp }
+                    )
+                }
+                .sortedByDescending { it.eventCount }
+        }
+
+        override fun observeHourlyActivity(sessionId: String?): Flow<List<com.example.inputmonitor.data.dao.HourlyActivityTuple>> {
+            return flowOf(emptyList())
+        }
+
+        override suspend fun getHourlyActivity(sessionId: String?): List<com.example.inputmonitor.data.dao.HourlyActivityTuple> {
+            return emptyList()
+        }
+
         override suspend fun deleteEventsForSession(sessionId: String): Int {
             val countBefore = events.size
             events.removeAll { it.sessionId == sessionId }

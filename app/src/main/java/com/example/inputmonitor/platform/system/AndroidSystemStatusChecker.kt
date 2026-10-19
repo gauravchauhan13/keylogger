@@ -42,7 +42,7 @@ class AndroidSystemStatusChecker(
             enabledServicesSetting.split(':').any {
                 it.equals(expectedShort, ignoreCase = true) || it.equals(expectedLong, ignoreCase = true)
             }
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
             false
         }
     }
@@ -51,7 +51,7 @@ class AndroidSystemStatusChecker(
         return try {
             val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
             imm?.inputMethodList?.any { it.packageName == context.packageName } ?: true
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
             true // If query fails, assume installed since declared in manifest
         }
     }
@@ -60,7 +60,7 @@ class AndroidSystemStatusChecker(
         return try {
             val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
             imm?.enabledInputMethodList?.any { it.packageName == context.packageName } ?: false
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
             false
         }
     }
@@ -77,15 +77,16 @@ class AndroidSystemStatusChecker(
             defaultIme.equals(expectedShort, ignoreCase = true) ||
                     defaultIme.equals(expectedLong, ignoreCase = true) ||
                     defaultIme.startsWith(context.packageName)
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
             false
         }
     }
 
     override fun isDatabaseReady(): Boolean {
         return try {
-            database.isOpen && database.openHelper.readableDatabase.version >= 1
-        } catch (_: Exception) {
+            database.openHelper.writableDatabase
+            true
+        } catch (_: Throwable) {
             false
         }
     }

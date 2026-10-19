@@ -92,6 +92,18 @@ class PrivacyDefenseInDepthTest {
         override fun observeMatchingPackages(query: String, limit: Int): Flow<List<String>> = flowOf(emptyList())
         override suspend fun getMatchingApplications(query: String, limit: Int): List<String> = emptyList()
         override suspend fun getMatchingPackages(query: String, limit: Int): List<String> = emptyList()
+        override fun observeStatisticsSummary(sessionId: String?): Flow<com.example.inputmonitor.data.dao.StatisticsSummaryTuple?> =
+            flowOf(com.example.inputmonitor.data.dao.StatisticsSummaryTuple())
+        override suspend fun getStatisticsSummary(sessionId: String?): com.example.inputmonitor.data.dao.StatisticsSummaryTuple? =
+            com.example.inputmonitor.data.dao.StatisticsSummaryTuple()
+        override fun observeAppUsageStats(sessionId: String?): Flow<List<com.example.inputmonitor.data.dao.AppUsageTuple>> =
+            flowOf(emptyList())
+        override suspend fun getAppUsageStats(sessionId: String?): List<com.example.inputmonitor.data.dao.AppUsageTuple> =
+            emptyList()
+        override fun observeHourlyActivity(sessionId: String?): Flow<List<com.example.inputmonitor.data.dao.HourlyActivityTuple>> =
+            flowOf(emptyList())
+        override suspend fun getHourlyActivity(sessionId: String?): List<com.example.inputmonitor.data.dao.HourlyActivityTuple> =
+            emptyList()
         override suspend fun deleteEventsForSession(sessionId: String): Int = 0
         override suspend fun deleteAllEvents(): Int = 0
     }

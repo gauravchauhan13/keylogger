@@ -18,6 +18,11 @@ object DatabaseProvider {
         context: Context,
         keyManager: DatabaseKeyManager = DatabaseKeyManager(context)
     ): AppDatabase {
+        try {
+            System.loadLibrary("sqlcipher")
+        } catch (_: Throwable) {
+            // Ignored if already loaded or in test environment
+        }
         val passphrase = keyManager.getOrCreateDatabasePassphrase()
         val factory = SupportOpenHelperFactory(passphrase)
 

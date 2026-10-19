@@ -35,6 +35,7 @@ fun AppNavigation(
     )
 
     val setupState by setupViewModel.setupState.collectAsState()
+    val isPermissionDenied by setupViewModel.isPermissionDenied.collectAsState()
     val startDestination = if (setupState.isOnboardingCompleted) {
         Screen.Dashboard.route
     } else {
@@ -66,7 +67,11 @@ fun AppNavigation(
                             popUpTo(Screen.Onboarding.route) { inclusive = true }
                         }
                     }
-                }
+                },
+                requiredPermissions = container.permissionCoordinator.getRequiredPermissions(),
+                isPermissionDenied = isPermissionDenied,
+                onPermissionsResult = { setupViewModel.onPermissionsResult(it) },
+                onDismissPermissionDeniedAlert = { setupViewModel.dismissPermissionDeniedAlert() }
             )
         }
 
@@ -141,9 +146,25 @@ fun AppNavigation(
         }
 
         composable(Screen.Statistics.route) {
+            val statisticsViewModel: com.example.inputmonitor.ui.statistics.StatisticsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                factory = com.example.inputmonitor.ui.statistics.StatisticsViewModel.provideFactory(
+                    eventRepository = container.eventRepository,
+                    sessionRepository = container.sessionRepository
+                )
+            )
+
+            val statisticsUiState by statisticsViewModel.uiState.collectAsState()
+
             StatisticsScreen(
+                uiState = statisticsUiState,
                 onNavigateBack = {
                     navController.popBackStack()
+                },
+                onSelectSession = { sessionId ->
+                    statisticsViewModel.selectSession(sessionId)
+                },
+                onSetDropdownExpanded = { expanded ->
+                    statisticsViewModel.setDropdownExpanded(expanded)
                 }
             )
         }

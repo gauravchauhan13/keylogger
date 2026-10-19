@@ -170,6 +170,94 @@ interface InteractionEventDao {
     """)
     suspend fun getMatchingPackages(query: String, limit: Int = 5): List<String>
 
+    @Query("""
+        SELECT 
+            COUNT(*) as total,
+            COALESCE(SUM(CASE WHEN source = 'KEYBOARD' THEN 1 ELSE 0 END), 0) as keyboard,
+            COALESCE(SUM(CASE WHEN source = 'ACCESSIBILITY' THEN 1 ELSE 0 END), 0) as accessibility,
+            COALESCE(SUM(CASE WHEN eventType = 'VIEW_CLICKED' THEN 1 ELSE 0 END), 0) as clicks,
+            COALESCE(SUM(CASE WHEN eventType = 'VIEW_FOCUSED' THEN 1 ELSE 0 END), 0) as focus,
+            COALESCE(SUM(CASE WHEN eventType = 'VIEW_SCROLLED' THEN 1 ELSE 0 END), 0) as scrolls,
+            COALESCE(SUM(CASE WHEN eventType IN ('WINDOW_STATE_CHANGED', 'WINDOWS_CHANGED') THEN 1 ELSE 0 END), 0) as windowChanges,
+            COALESCE(SUM(CASE WHEN eventType = 'SENSITIVE_INPUT_DETECTED' OR inputClassification LIKE 'SENSITIVE_%' THEN 1 ELSE 0 END), 0) as sensitiveSuppressions,
+            COUNT(DISTINCT packageName) as distinctApps,
+            MIN(timestamp) as firstTimestamp,
+            MAX(timestamp) as lastTimestamp
+        FROM interaction_events
+        WHERE (:sessionId IS NULL OR sessionId = :sessionId)
+    """)
+    fun observeStatisticsSummary(sessionId: String? = null): Flow<StatisticsSummaryTuple?>
+
+    @Query("""
+        SELECT 
+            COUNT(*) as total,
+            COALESCE(SUM(CASE WHEN source = 'KEYBOARD' THEN 1 ELSE 0 END), 0) as keyboard,
+            COALESCE(SUM(CASE WHEN source = 'ACCESSIBILITY' THEN 1 ELSE 0 END), 0) as accessibility,
+            COALESCE(SUM(CASE WHEN eventType = 'VIEW_CLICKED' THEN 1 ELSE 0 END), 0) as clicks,
+            COALESCE(SUM(CASE WHEN eventType = 'VIEW_FOCUSED' THEN 1 ELSE 0 END), 0) as focus,
+            COALESCE(SUM(CASE WHEN eventType = 'VIEW_SCROLLED' THEN 1 ELSE 0 END), 0) as scrolls,
+            COALESCE(SUM(CASE WHEN eventType IN ('WINDOW_STATE_CHANGED', 'WINDOWS_CHANGED') THEN 1 ELSE 0 END), 0) as windowChanges,
+            COALESCE(SUM(CASE WHEN eventType = 'SENSITIVE_INPUT_DETECTED' OR inputClassification LIKE 'SENSITIVE_%' THEN 1 ELSE 0 END), 0) as sensitiveSuppressions,
+            COUNT(DISTINCT packageName) as distinctApps,
+            MIN(timestamp) as firstTimestamp,
+            MAX(timestamp) as lastTimestamp
+        FROM interaction_events
+        WHERE (:sessionId IS NULL OR sessionId = :sessionId)
+    """)
+    suspend fun getStatisticsSummary(sessionId: String? = null): StatisticsSummaryTuple?
+
+    @Query("""
+        SELECT 
+            packageName,
+            COALESCE(applicationName, packageName) as applicationName,
+            COUNT(*) as eventCount,
+            MAX(timestamp) as lastActiveTimestamp
+        FROM interaction_events
+        WHERE (:sessionId IS NULL OR sessionId = :sessionId)
+          AND packageName IS NOT NULL
+        GROUP BY packageName
+        ORDER BY eventCount DESC
+    """)
+    fun observeAppUsageStats(sessionId: String? = null): Flow<List<AppUsageTuple>>
+
+    @Query("""
+        SELECT 
+            packageName,
+            COALESCE(applicationName, packageName) as applicationName,
+            COUNT(*) as eventCount,
+            MAX(timestamp) as lastActiveTimestamp
+        FROM interaction_events
+        WHERE (:sessionId IS NULL OR sessionId = :sessionId)
+          AND packageName IS NOT NULL
+        GROUP BY packageName
+        ORDER BY eventCount DESC
+    """)
+    suspend fun getAppUsageStats(sessionId: String? = null): List<AppUsageTuple>
+
+    @Query("""
+        SELECT 
+            CAST(strftime('%H', timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER) as hourOfDay,
+            COUNT(*) as eventCount
+        FROM interaction_events
+        WHERE (:sessionId IS NULL OR sessionId = :sessionId)
+          AND timestamp > 0
+        GROUP BY hourOfDay
+        ORDER BY hourOfDay ASC
+    """)
+    fun observeHourlyActivity(sessionId: String? = null): Flow<List<HourlyActivityTuple>>
+
+    @Query("""
+        SELECT 
+            CAST(strftime('%H', timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER) as hourOfDay,
+            COUNT(*) as eventCount
+        FROM interaction_events
+        WHERE (:sessionId IS NULL OR sessionId = :sessionId)
+          AND timestamp > 0
+        GROUP BY hourOfDay
+        ORDER BY hourOfDay ASC
+    """)
+    suspend fun getHourlyActivity(sessionId: String? = null): List<HourlyActivityTuple>
+
     @Query("DELETE FROM interaction_events WHERE sessionId = :sessionId")
     suspend fun deleteEventsForSession(sessionId: String): Int
 
@@ -189,3 +277,39 @@ data class EventCountsTuple(
     val scrolls: Long = 0,
     val windowChanges: Long = 0
 )
+
+/**
+ * Tuple representing detailed statistical summary metrics (SRS.md §51, Architecture.md §57).
+ */
+data class StatisticsSummaryTuple(
+    val total: Long = 0,
+    val keyboard: Long = 0,
+    val accessibility: Long = 0,
+    val clicks: Long = 0,
+    val focus: Long = 0,
+    val scrolls: Long = 0,
+    val windowChanges: Long = 0,
+    val sensitiveSuppressions: Long = 0,
+    val distinctApps: Int = 0,
+    val firstTimestamp: Long? = null,
+    val lastTimestamp: Long? = null
+)
+
+/**
+ * Tuple representing aggregate application interaction counts (SRS.md §51, §52).
+ */
+data class AppUsageTuple(
+    val packageName: String,
+    val applicationName: String,
+    val eventCount: Long,
+    val lastActiveTimestamp: Long
+)
+
+/**
+ * Tuple representing hourly interaction volume across a 24-hour cycle (SRS.md §51).
+ */
+data class HourlyActivityTuple(
+    val hourOfDay: Int,
+    val eventCount: Long
+)
+

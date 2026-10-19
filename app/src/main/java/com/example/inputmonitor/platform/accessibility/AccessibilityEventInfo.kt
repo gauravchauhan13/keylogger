@@ -20,16 +20,19 @@ interface AccessibilityEventInfo {
 
 /**
  * Adapts an Android [AccessibilityEvent] into [AccessibilityEventInfo].
+ * Snapshots attributes immediately to decouple from the Android event recycler.
  */
-fun AccessibilityEvent.toEventInfo(): AccessibilityEventInfo = object : AccessibilityEventInfo {
-    override val eventType: Int get() = this@toEventInfo.eventType
-    override val packageName: CharSequence? get() = this@toEventInfo.packageName
-    override val className: CharSequence? get() = this@toEventInfo.className
-    override val contentDescription: CharSequence? get() = this@toEventInfo.contentDescription
-    override val isPassword: Boolean get() = this@toEventInfo.isPassword
-    override val itemCount: Int get() = this@toEventInfo.itemCount
-    override val action: Int get() = this@toEventInfo.action
-    override val eventTime: Long get() = this@toEventInfo.eventTime
+fun AccessibilityEvent.toEventInfo(): AccessibilityEventInfo {
+    return SimpleAccessibilityEventInfo(
+        eventType = this.eventType,
+        packageName = this.packageName?.toString(),
+        className = this.className?.toString(),
+        contentDescription = this.contentDescription?.toString(),
+        isPassword = this.isPassword,
+        itemCount = this.itemCount,
+        action = this.action,
+        eventTime = if (this.eventTime > 0) this.eventTime else System.currentTimeMillis()
+    )
 }
 
 /**

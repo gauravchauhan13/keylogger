@@ -379,6 +379,45 @@ InteractionEventDao            InteractionEventDao            InteractionEventDa
 
 ---
 
+## Statistics & Aggregate Metrics Subsystem
+
+```text
+Room Aggregate Queries (SQLite Execution)
+  ├── observeStatisticsSummary()  ──>  StatisticsSummaryTuple (Aggregate metrics: totals, categories, velocity)
+  ├── observeAppUsageStats()       ──>  List<AppUsageTuple> (Package, app name, count, lastActive)
+  └── observeHourlyActivity()      ──>  List<HourlyActivityTuple> (Hourly circadian breakdown via strftime)
+                                               │
+                                               ▼
+                              EventRepositoryImpl (IO Dispatcher)
+                                ├── Circadian 24h Normalization (0..23 hours guaranteed)
+                                ├── App Usage Percentage ((count / total) * 100f)
+                                ├── Velocity Calculation (eventsPerMinute)
+                                └── InteractionStatistics Domain Model
+                                               │
+                                               ▼
+                               StatisticsViewModel (StateFlow)
+                                ├── Session filtering (All Sessions vs specific sessionId)
+                                └── StatisticsUiState
+                                               │
+                                               ▼
+                                StatisticsScreen (Material 3)
+      ┌─────────────────────────────────────────────────────────────────┐
+      │ • Overview Summary Card (Total events, velocity, active time)   │
+      │ • Interaction Breakdown Pills (Keyboard, Clicks, Focus, etc.)   │
+      │ • 24-Hour Circadian Activity Chart (Normalized height bars 0-23)│
+      │ • Top Application Usage Cards (Progress bar, %, event count)    │
+      │ • Session Selector Dropdown (Global vs per-session filtering)   │
+      │ • Empty State Display (Guidance when no events recorded)        │
+      └─────────────────────────────────────────────────────────────────┘
+```
+
+- SQLite Aggregate Engine: Leverages SQLite `COUNT`, `SUM`, and `strftime('%H', timestamp / 1000, 'unixepoch', 'localtime')` for sub-millisecond aggregate calculations without loading records into heap memory.
+- Circadian 24-Hour Normalization: Normalizes hourly activity into a full 24-hour sequence (0..23), filling missing intervals with zero counts and calculating relative height ratios (`count / maxCount`).
+- Application Distribution: Groups by package name with distinct counts and relative percentages.
+- Native Crash Hardening: SQLCipher native library linkage (`System.loadLibrary("sqlcipher")`), immediate immutable event snapshotting (`SimpleAccessibilityEventInfo`), Keystore passphrase corruption self-healing, and `Throwable` containment barriers ensure robust device execution.
+
+---
+
 ## Export
 
 CSV (user-initiated local export)

@@ -636,6 +636,44 @@ Privacy filter failure:
 
 ---
 
+# 15. Interaction Statistics Flow
+
+```text
+Room Aggregate Queries (SQLite Database)
+  ├── observeStatisticsSummary(sessionId)  ──>  StatisticsSummaryTuple
+  ├── observeAppUsageStats(sessionId)       ──>  List<AppUsageTuple>
+  └── observeHourlyActivity(sessionId)      ──>  List<HourlyActivityTuple>
+                                                   │
+                                                   ▼
+                                  EventRepositoryImpl (IO Dispatcher)
+                                    │ • 24-Hour Circadian Normalization (0..23)
+                                    │ • Application Usage Percentages
+                                    │ • Interaction Velocity (events/min)
+                                    │ • Defense-in-Depth Privacy Preservation
+                                    ▼
+                                  InteractionStatistics Domain Model
+                                                   │
+                                                   ▼
+                                  StatisticsViewModel (StateFlow)
+                                    │ • Session selection (All Sessions vs specific)
+                                    │ • Dropdown menu expansion state
+                                    ▼
+                                  StatisticsUiState
+                                                   │
+                                                   ▼
+                                   StatisticsScreen (Jetpack Compose)
+          ┌─────────────────────────────────────────────────────────────────┐
+          │ • Summary Metric Card: Total events, velocity, active duration   │
+          │ • Category Breakdown Pills: Keyboard, Accessibility, Clicks, etc│
+          │ • Circadian 24-Hour Activity Chart: Normalized vertical bars    │
+          │ • Application Breakdown List: App name, count, % progress bar   │
+          │ • Session Filter Dropdown: Global vs scoped session inspection  │
+          │ • Empty State Screen: Informational placeholder when no events   │
+          └─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 # Current Implementation State
 
 ```text
@@ -653,5 +691,7 @@ Phase 10: First-Run Setup & Onboarding UI (COMPLETE)
 Phase 11: Dashboard Architecture & Aggregate Event Metrics (COMPLETE)
 Phase 12: Event Timeline, Paged Observation & Multi-Dimensional Filtering (COMPLETE)
 Phase 13: Database-Backed Search, Index Optimization & Debounced Query Engine (COMPLETE)
-Phase 14: Interaction Statistics Engine & UI (NEXT)
+Phase 14: Interaction Statistics Engine & UI (COMPLETE)
+Phase 15: Export Engine (NEXT)
 ```
+

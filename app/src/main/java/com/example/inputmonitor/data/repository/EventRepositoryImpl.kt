@@ -5,9 +5,17 @@ import com.example.inputmonitor.data.dao.InteractionEventDao
 import com.example.inputmonitor.data.entity.InteractionEventEntity
 import com.example.inputmonitor.data.mapper.toDomain
 import com.example.inputmonitor.data.mapper.toEntity
+import com.example.inputmonitor.data.dao.AppUsageTuple
+import com.example.inputmonitor.data.dao.HourlyActivityTuple
+import com.example.inputmonitor.data.dao.StatisticsSummaryTuple
+import com.example.inputmonitor.domain.model.AppUsageStat
+import com.example.inputmonitor.domain.model.HourlyActivityStat
 import com.example.inputmonitor.domain.model.InteractionEvent
+import com.example.inputmonitor.domain.model.InteractionStatistics
+import com.example.inputmonitor.domain.model.StatisticsSummary
 import com.example.inputmonitor.domain.repository.EventRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -221,6 +229,84 @@ class EventRepositoryImpl(
 
     override suspend fun deleteAllEvents(): Boolean = withContext(dispatchers.io) {
         eventDao.deleteAllEvents() >= 0
+    }
+
+    override fun observeStatistics(sessionId: String?): Flow<InteractionStatistics> {
+        return combine(
+            eventDao.observeStatisticsSummary(sessionId),
+            eventDao.observeAppUsageStats(sessionId),
+            eventDao.observeHourlyActivity(sessionId)
+        ) { summaryTuple, appTuples, hourlyTuples ->
+            mapToInteractionStatistics(summaryTuple, appTuples, hourlyTuples)
+        }.flowOn(dispatchers.io)
+    }
+
+    override suspend fun getStatistics(sessionId: String?): InteractionStatistics = withContext(dispatchers.io) {
+        val summaryTuple = eventDao.getStatisticsSummary(sessionId)
+        val appTuples = eventDao.getAppUsageStats(sessionId)
+        val hourlyTuples = eventDao.getHourlyActivity(sessionId)
+        mapToInteractionStatistics(summaryTuple, appTuples, hourlyTuples)
+    }
+
+    private fun mapToInteractionStatistics(
+        summaryTuple: StatisticsSummaryTuple?,
+        appTuples: List<AppUsageTuple>,
+        hourlyTuples: List<HourlyActivityTuple>
+    ): InteractionStatistics {
+        val total = summaryTuple?.total ?: 0L
+        val firstTs = summaryTuple?.firstTimestamp
+        val lastTs = summaryTuple?.lastTimestamp
+
+        val eventsPerMin = if (firstTs != null && lastTs != null && lastTs > firstTs) {
+            val durationMin = (lastTs - firstTs) / 60000.0
+            if (durationMin >= 0.1) total / durationMin else total.toDouble()
+        } else {
+            0.0
+        }
+
+        val summary = StatisticsSummary(
+            totalEvents = total,
+            keyboardEvents = summaryTuple?.keyboard ?: 0L,
+            accessibilityEvents = summaryTuple?.accessibility ?: 0L,
+            clicks = summaryTuple?.clicks ?: 0L,
+            focusEvents = summaryTuple?.focus ?: 0L,
+            scrollEvents = summaryTuple?.scrolls ?: 0L,
+            windowChanges = summaryTuple?.windowChanges ?: 0L,
+            sensitiveSuppressions = summaryTuple?.sensitiveSuppressions ?: 0L,
+            distinctApps = summaryTuple?.distinctApps ?: appTuples.size,
+            firstEventTimestamp = firstTs,
+            lastEventTimestamp = lastTs,
+            eventsPerMinute = eventsPerMin
+        )
+
+        val appUsage = appTuples.map { tuple ->
+            val percentage = if (total > 0L) (tuple.eventCount.toFloat() / total) * 100f else 0f
+            AppUsageStat(
+                packageName = tuple.packageName,
+                applicationName = tuple.applicationName,
+                count = tuple.eventCount,
+                percentage = percentage,
+                lastActiveTimestamp = tuple.lastActiveTimestamp
+            )
+        }
+
+        val maxHourlyCount = hourlyTuples.maxOfOrNull { it.eventCount } ?: 0L
+        val hourlyMap = hourlyTuples.associate { it.hourOfDay to it.eventCount }
+        val full24Hours = (0..23).map { hour ->
+            val count = hourlyMap[hour] ?: 0L
+            val ratio = if (maxHourlyCount > 0L) count.toFloat() / maxHourlyCount else 0f
+            HourlyActivityStat(
+                hourOfDay = hour,
+                count = count,
+                normalizedRatio = ratio
+            )
+        }
+
+        return InteractionStatistics(
+            summary = summary,
+            appUsage = appUsage,
+            hourlyActivity = full24Hours
+        )
     }
 
     /**

@@ -37,6 +37,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import com.example.inputmonitor.domain.model.SetupState
 
 /**
@@ -50,9 +52,18 @@ fun SetupScreen(
     onOpenKeyboardSettings: () -> Unit,
     onShowKeyboardPicker: () -> Unit,
     onCompleteSetup: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    requiredPermissions: List<String> = emptyList(),
+    isPermissionDenied: Boolean = false,
+    onPermissionsResult: (Map<String, Boolean>) -> Unit = {},
+    onDismissPermissionDeniedAlert: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        onPermissionsResult(permissions)
+    }
 
     Scaffold(modifier = modifier.fillMaxSize()) { paddingValues ->
         Column(
@@ -78,6 +89,75 @@ fun SetupScreen(
             )
 
             Spacer(modifier = Modifier.height(18.dp))
+
+            // Non-blocking Permission Denial Notice (SRS.md §12, AC-35)
+            if (isPermissionDenied) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Permission Notice",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "One or more optional permissions were not granted. The application will continue operating with available capabilities without trapping setup.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            OutlinedButton(
+                                onClick = onDismissPermissionDeniedAlert,
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Dismiss")
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(14.dp))
+            }
+
+            // Optional Step: Application Runtime Permissions (SRS.md §12)
+            if (requiredPermissions.isNotEmpty()) {
+                SetupStepCard(
+                    icon = Icons.Default.Info,
+                    title = "Application Permissions",
+                    description = "Grants runtime permissions required for application notifications and status alerts.",
+                    isConfigured = setupState.runtimePermissionsReady,
+                    statusText = if (setupState.runtimePermissionsReady) "READY" else "ACTION NEEDED",
+                    action = {
+                        if (!setupState.runtimePermissionsReady) {
+                            Button(
+                                onClick = { permissionLauncher.launch(requiredPermissions.toTypedArray()) },
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Grant Permissions")
+                            }
+                        }
+                    }
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+            }
 
             // Step 1: Accessibility Service (SRS.md §13)
             SetupStepCard(

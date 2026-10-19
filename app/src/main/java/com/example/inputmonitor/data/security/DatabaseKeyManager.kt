@@ -44,16 +44,26 @@ class DatabaseKeyManager(private val context: Context) {
         val file = File(context.filesDir, PASSPHRASE_FILE)
         val secretKey = getOrCreateMasterKey()
 
-        return if (file.exists()) {
-            decryptPassphrase(file.readBytes(), secretKey)
-        } else {
-            val rawPassphrase = ByteArray(32).apply {
-                SecureRandom().nextBytes(this)
+        if (file.exists()) {
+            try {
+                return decryptPassphrase(file.readBytes(), secretKey)
+            } catch (_: Throwable) {
+                // Keystore entry invalidated, rotated, or file corrupted.
+                // Safely delete stale passphrase and unopenable database (DEC-005).
+                try {
+                    file.delete()
+                    context.deleteDatabase(com.example.inputmonitor.data.database.AppDatabase.DATABASE_NAME)
+                } catch (_: Throwable) {
+                }
             }
-            val encryptedBytes = encryptPassphrase(rawPassphrase, secretKey)
-            file.writeBytes(encryptedBytes)
-            rawPassphrase
         }
+
+        val rawPassphrase = ByteArray(32).apply {
+            SecureRandom().nextBytes(this)
+        }
+        val encryptedBytes = encryptPassphrase(rawPassphrase, secretKey)
+        file.writeBytes(encryptedBytes)
+        return rawPassphrase
     }
 
     private fun getOrCreateMasterKey(): SecretKey {

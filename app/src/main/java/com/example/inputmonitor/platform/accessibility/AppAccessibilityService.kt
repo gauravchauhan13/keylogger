@@ -16,19 +16,23 @@ class AppAccessibilityService : AccessibilityService() {
     var publisherOverride: AccessibilityEventPublisher? = null
 
     internal val filter: AccessibilityEventFilter
-        get() = filterOverride ?: (application as? MonitoringApplication)?.container?.accessibilityEventFilter
+        get() = filterOverride ?: runCatching { (application as? MonitoringApplication)?.container?.accessibilityEventFilter }.getOrNull()
             ?: AccessibilityEventFilterImpl(packageName)
 
     internal val mapper: AccessibilityEventMapper
-        get() = mapperOverride ?: (application as? MonitoringApplication)?.container?.accessibilityEventMapper
+        get() = mapperOverride ?: runCatching { (application as? MonitoringApplication)?.container?.accessibilityEventMapper }.getOrNull()
             ?: AccessibilityEventMapperImpl()
 
     internal val publisher: AccessibilityEventPublisher?
-        get() = publisherOverride ?: (application as? MonitoringApplication)?.container?.accessibilityEventPublisher
+        get() = publisherOverride ?: runCatching { (application as? MonitoringApplication)?.container?.accessibilityEventPublisher }.getOrNull()
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
-        handleEvent(event.toEventInfo())
+        try {
+            handleEvent(event.toEventInfo())
+        } catch (_: Throwable) {
+            // Failure-tolerance: errors in accessibility dispatch must never crash the service
+        }
     }
 
     internal fun handleEvent(event: AccessibilityEventInfo?) {
@@ -41,7 +45,7 @@ class AppAccessibilityService : AccessibilityService() {
 
             val rawEvent = mapper.map(event)
             publisher?.publish(rawEvent)
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
             // Failure-tolerance: errors in accessibility mapping/publishing must never crash the service
         }
     }
