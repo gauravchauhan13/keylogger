@@ -59,9 +59,9 @@ android {
     }
 }
 
-kotlin {
-    jvmToolchain(17)
-}
+// kotlin {
+//     jvmToolchain(17)
+// }
 
 dependencies {
     // Compose BOM
