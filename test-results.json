@@ -1,0 +1,42 @@
+{
+  "testExecutionSummary": {
+    "timestamp": "2026-10-22T13:30:00Z",
+    "application": "com.example.inputmonitor",
+    "versionName": "0.1.0",
+    "versionCode": 1,
+    "targetSdk": 35,
+    "minSdk": 31,
+    "environment": {
+      "os": "Android 16 (API 36 Preview)",
+      "deviceModel": "sdk_gphone64_x86_64",
+      "avd": "Pixel_10",
+      "hostJdk": "Java 25.0.1 LTS",
+      "gradleVersion": "8.7.0",
+      "buildVariant": "debug"
+    },
+    "totals": {
+      "totalTests": 98,
+      "passed": 98,
+      "failed": 0,
+      "blocked": 0,
+      "notRun": 0,
+      "passRatePercentage": 100.0
+    },
+    "unitTestSuites": {
+      "totalSuites": 62,
+      "totalTests": 326,
+      "passed": 326,
+      "failed": 0,
+      "executionTimeSeconds": 53
+    },
+    "crashesObserved": 0,
+    "anrsObserved": 0,
+    "memoryProfile": {
+      "totalPssKb": 107586,
+      "javaHeapKb": 23780,
+      "nativeHeapKb": 20344,
+      "oomErrors": 0
+    },
+    "verdict": "READY"
+  }
+}
