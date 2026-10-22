@@ -83,6 +83,11 @@ interface AppContainer {
     val deleteSessionUseCase: com.example.inputmonitor.domain.usecase.DeleteSessionUseCase
     val deleteAllSessionsUseCase: com.example.inputmonitor.domain.usecase.DeleteAllSessionsUseCase
     val deleteAllApplicationDataUseCase: com.example.inputmonitor.domain.usecase.DeleteAllApplicationDataUseCase
+    val backupSettingsRepository: com.example.inputmonitor.domain.backup.repository.BackupSettingsRepository
+    val backupTokenStorage: com.example.inputmonitor.data.backup.security.BackupTokenStorage
+    val backupFileManager: com.example.inputmonitor.data.backup.file.BackupFileManager
+    val backupRepository: com.example.inputmonitor.domain.backup.repository.BackupRepository
+    val autoBackupScheduler: com.example.inputmonitor.platform.backup.AutoBackupScheduler
 }
 
 
@@ -253,6 +258,30 @@ class DefaultAppContainer(
             sessionManager = sessionManager,
             dispatchers = dispatchers
         )
+    }
+
+    override val backupSettingsRepository: com.example.inputmonitor.domain.backup.repository.BackupSettingsRepository by lazy {
+        com.example.inputmonitor.data.backup.repository.BackupSettingsRepositoryImpl(context, dispatchers)
+    }
+
+    override val backupTokenStorage: com.example.inputmonitor.data.backup.security.BackupTokenStorage by lazy {
+        com.example.inputmonitor.data.backup.security.KeystoreBackupTokenStorage(context, dispatchers)
+    }
+
+    override val backupFileManager: com.example.inputmonitor.data.backup.file.BackupFileManager by lazy {
+        com.example.inputmonitor.data.backup.file.BackupFileManager(context, exportSessionUseCase, dispatchers)
+    }
+
+    override val backupRepository: com.example.inputmonitor.domain.backup.repository.BackupRepository by lazy {
+        com.example.inputmonitor.data.backup.provider.HttpBackupProvider(
+            backupSettingsRepository = backupSettingsRepository,
+            tokenStorage = backupTokenStorage,
+            dispatchers = dispatchers
+        )
+    }
+
+    override val autoBackupScheduler: com.example.inputmonitor.platform.backup.AutoBackupScheduler by lazy {
+        com.example.inputmonitor.platform.backup.WorkManagerAutoBackupScheduler(context)
     }
 }
 

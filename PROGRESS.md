@@ -30,8 +30,15 @@ Current Phase:
 Phase 20 complete; ready to begin Phase 21 (Release Optimization & Validation)
 
 Current Objective:
-Phase 20 (Android Version Testing) complete: Deployed and tested on Pixel 10 AVD running Android 16 (API 36 / Baklava, security patch 2026-01-05). Resolved ART UnsatisfiedLinkError by adding explicit System.loadLibrary("sqlcipher") in MonitoringApplication.onCreate(). Overrode onEvaluateInputViewShown() returning true in CustomKeyboardService ensuring soft keyboard rendering with hardware/host keyboards. Verified live onboarding, encrypted Room session creation, IME typing, real-time sensitive classification (AC-30), key popup suppression, zero credential persistence, and live dashboard metrics. Implemented AndroidVersionCompatibilityTest (8 tests). 58 test suites / 305 unit tests passing (100% pass rate in ~2.79s). Clean debug and R8-minified release APK (24.59 MB) verified.
-Ready to implement Phase 21 (Release Optimization & Validation).
+Production-quality, user-consented Automatic Daily Cloud Backup subsystem implemented and verified:
+- Reusable CSV export via BackupFileManager operating strictly under cacheDir/backups/ with atomic .tmp -> .csv writing and automated stale-file purging.
+- Provider-independent BackupRepository abstraction with production HttpBackupProvider enforcing TLS/HTTPS (cleartext prohibited) and memory-safe streaming uploads.
+- BackupSettingsRepository backed by Jetpack DataStore preferences (disabled by default) and KeystoreBackupTokenStorage using hardware-backed AES-256-GCM.
+- WorkManager background scheduler (WorkManagerAutoBackupScheduler) enforcing unique 24-hour periodic work (ExistingPeriodicWorkPolicy.UPDATE) and single-instance manual backups (ExistingWorkPolicy.KEEP) with unmetered network constraints for Wi-Fi only mode.
+- AutoBackupWorker coroutine worker executing the full pipeline: status checks, attempt logging, CSV generation, HTTPS streaming upload, failure/auth classification, and temporary file deletion.
+- Settings UI updated with Automatic Daily Backup card, status badges, ON/OFF and Wi-Fi toggles, Back Up Now trigger, and Test & Connect dialog.
+- Manual export preserved independently with both local SAF saving and Android Share Sheet (ACTION_SEND + FileProvider).
+- 62 test suites / 326 unit tests passing (100% pass rate). Debug APK assembled cleanly.
 ```
 
 Update these values as development proceeds.

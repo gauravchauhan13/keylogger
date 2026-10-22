@@ -68,6 +68,7 @@ fun ExportScreen(
     onSetDropdownExpanded: (Boolean) -> Unit,
     onExportRequested: (Uri) -> Unit,
     onDismissResult: () -> Unit,
+    onShareViaShareSheet: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -296,7 +297,28 @@ fun ExportScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (uiState.isExporting) "Exporting..." else "Select Destination & Export CSV",
+                    text = if (uiState.isExporting) "Exporting..." else "Save CSV Locally (File Picker)",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                )
+            }
+
+            // Secondary Action: Share via Android Share Sheet (Phase 14)
+            OutlinedButton(
+                onClick = onShareViaShareSheet,
+                enabled = uiState.canExport,
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Share CSV via Android Share Sheet",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
                 )
             }

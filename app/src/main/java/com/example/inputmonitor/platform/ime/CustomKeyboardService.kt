@@ -2,6 +2,7 @@ package com.example.inputmonitor.platform.ime
 
 import android.content.Context
 import android.inputmethodservice.InputMethodService
+import android.text.InputType
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
@@ -24,6 +25,9 @@ class CustomKeyboardService : InputMethodService() {
     private val keyProcessor = KeyProcessor()
     private val keyboardController = KeyboardController()
     private var keyboardView: KeyboardView? = null
+    private val typingSuggestions by lazy {
+        TypingSuggestions(this, { currentInputConnection }) { keyboardView?.setSuggestions(it) }
+    }
 
     // Allows test harness injection; falls back to AppContainer singleton
     var publisherOverride: ImeEventPublisher? = null
@@ -44,24 +48,44 @@ class CustomKeyboardService : InputMethodService() {
         return true
     }
 
+    // Keep a consistent docked keyboard rather than changing to an extracted
+    // fullscreen editor on rotation, which has a separate show/hide lifecycle.
+    override fun onEvaluateFullscreenMode(): Boolean = false
+
+    override fun onShowInputRequested(flags: Int, configChange: Boolean): Boolean {
+        if (super.onShowInputRequested(flags, configChange)) return true
+        // The default may reject an implicit re-show when an emulator/hardware
+        // keyboard is present. Honor the app's request while an editor is active.
+        val inputType = currentInputEditorInfo?.inputType ?: InputType.TYPE_NULL
+        return inputType != InputType.TYPE_NULL && onEvaluateInputViewShown()
+    }
+
     override fun onCreateInputView(): View {
         val view = KeyboardView(this) { action ->
             handleKeyAction(action)
         }
         view.setLayout(keyboardController.currentLayout.value)
         keyboardView = view
+        view.setSuggestionsAllowed(SuggestionPolicy.allows(currentInputEditorInfo?.inputType ?: 0, currentInputEditorInfo?.imeOptions ?: 0))
+        view.onSuggestion = { runCatching { typingSuggestions.choose(it) }; Unit }
         return view
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
         keyboardController.updateEditorInfo(attribute)
+        runCatching { typingSuggestions.start(attribute) }
+        keyboardView?.setSuggestionsAllowed(SuggestionPolicy.allows(attribute?.inputType ?: 0, attribute?.imeOptions ?: 0))
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         keyboardController.updateEditorInfo(info)
-        keyboardView?.setLayout(keyboardController.currentLayout.value)
+        // Android may recreate the IME window independently of the editor session.
+        val view = keyboardView ?: (onCreateInputView() as KeyboardView).also { setInputView(it) }
+        view.startInput(keyboardController.currentLayout.value)
+        view.setSuggestionsAllowed(SuggestionPolicy.allows(info?.inputType ?: 0, info?.imeOptions ?: 0))
+        runCatching { typingSuggestions.refresh() }
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
@@ -91,12 +115,15 @@ class CustomKeyboardService : InputMethodService() {
                     keyboardView?.setLayout(keyboardController.currentLayout.value)
                 }
                 emitKeyEventCandidate(action)
+                runCatching { typingSuggestions.refresh() }
             }
             is KeyAction.Space,
             is KeyAction.Backspace,
             is KeyAction.Enter -> {
+                if (action == KeyAction.Space) runCatching { typingSuggestions.correctBeforeSpace() }
                 keyProcessor.processKey(action, currentInputConnection, currentInputEditorInfo)
                 emitKeyEventCandidate(action)
+                runCatching { typingSuggestions.refresh() }
             }
         }
     }
@@ -141,7 +168,19 @@ class CustomKeyboardService : InputMethodService() {
     }
 
     override fun onDestroy() {
+        typingSuggestions.close()
         keyboardView = null
         super.onDestroy()
+    }
+
+    override fun onFinishInput() {
+        typingSuggestions.close()
+        super.onFinishInput()
+    }
+
+    override fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int,
+        newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
+        super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        runCatching { typingSuggestions.refresh() }
     }
 }

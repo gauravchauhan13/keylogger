@@ -40,7 +40,8 @@ class KeyProcessor {
                 is KeyAction.Backspace -> {
                     val selectedText = inputConnection.getSelectedText(0)
                     if (selectedText.isNullOrEmpty()) {
-                        val deleted = inputConnection.deleteSurroundingText(1, 0)
+                        val beforeCursor = inputConnection.getTextBeforeCursor(128, 0)?.toString().orEmpty()
+                        val deleted = inputConnection.deleteSurroundingText(EmojiCatalog.deletionLength(beforeCursor), 0)
                         if (!deleted) {
                             sendDownUpKeyEvents(inputConnection, KeyEvent.KEYCODE_DEL)
                         } else {

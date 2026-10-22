@@ -275,6 +275,42 @@ class SettingsFlowIntegrationTest {
         }
     }
 
+    private class FakeBackupSettingsRepo : com.example.inputmonitor.domain.backup.repository.BackupSettingsRepository {
+        val flow = MutableStateFlow(com.example.inputmonitor.domain.backup.model.BackupSettings())
+        override val backupSettings: Flow<com.example.inputmonitor.domain.backup.model.BackupSettings> = flow
+        override suspend fun getBackupSettings() = flow.value
+        override suspend fun setBackupEnabled(enabled: Boolean) { flow.value = flow.value.copy(enabled = enabled) }
+        override suspend fun setWifiOnly(wifiOnly: Boolean) { flow.value = flow.value.copy(wifiOnly = wifiOnly) }
+        override suspend fun setProviderConfig(providerId: String, endpoint: String?) {
+            flow.value = flow.value.copy(providerId = providerId, providerEndpoint = endpoint)
+        }
+        override suspend fun recordBackupAttempt(timestamp: Long) {}
+        override suspend fun recordBackupSuccess(timestamp: Long, remoteBackupId: String?) {}
+        override suspend fun recordBackupFailure(reason: String, authRequired: Boolean) {}
+        override suspend fun clearAuthenticationRequired() {}
+        override suspend fun resetBackupSettings() { flow.value = com.example.inputmonitor.domain.backup.model.BackupSettings() }
+    }
+
+    private class FakeTokenStorage : com.example.inputmonitor.data.backup.security.BackupTokenStorage {
+        override suspend fun saveAuthToken(token: String) {}
+        override suspend fun getAuthToken(): String? = null
+        override suspend fun clearAuthToken() {}
+        override suspend fun hasAuthToken(): Boolean = false
+    }
+
+    private class FakeBackupRepo : com.example.inputmonitor.domain.backup.repository.BackupRepository {
+        override suspend fun uploadBackup(file: java.io.File, metadata: com.example.inputmonitor.domain.backup.model.BackupMetadata) =
+            com.example.inputmonitor.domain.backup.model.BackupResult.Success("id")
+        override suspend fun testConnection(endpoint: String, token: String?) =
+            com.example.inputmonitor.domain.backup.model.BackupResult.Success("ok")
+    }
+
+    private class FakeScheduler : com.example.inputmonitor.platform.backup.AutoBackupScheduler {
+        override fun schedulePeriodicBackup(wifiOnly: Boolean) {}
+        override fun triggerImmediateBackup(wifiOnly: Boolean) {}
+        override fun cancelPeriodicBackup() {}
+    }
+
     private lateinit var sessionDao: MockSessionDao
     private lateinit var eventDao: MockEventDao
     private lateinit var sessionRepository: SessionRepositoryImpl
@@ -327,6 +363,10 @@ class SettingsFlowIntegrationTest {
             deleteSessionUseCase = deleteSessionUseCase,
             deleteAllSessionsUseCase = deleteAllSessionsUseCase,
             deleteAllApplicationDataUseCase = deleteAllApplicationDataUseCase,
+            backupSettingsRepository = FakeBackupSettingsRepo(),
+            backupTokenStorage = FakeTokenStorage(),
+            backupRepository = FakeBackupRepo(),
+            autoBackupScheduler = FakeScheduler(),
             dispatchers = testDispatchers
         )
     }

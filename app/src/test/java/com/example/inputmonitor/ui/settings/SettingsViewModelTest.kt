@@ -208,6 +208,62 @@ class SettingsViewModelTest {
         notes = null
     )
 
+    private class FakeBackupSettingsRepository : com.example.inputmonitor.domain.backup.repository.BackupSettingsRepository {
+        val settingsFlow = MutableStateFlow(com.example.inputmonitor.domain.backup.model.BackupSettings())
+        override val backupSettings: Flow<com.example.inputmonitor.domain.backup.model.BackupSettings> = settingsFlow
+        override suspend fun getBackupSettings(): com.example.inputmonitor.domain.backup.model.BackupSettings = settingsFlow.value
+        override suspend fun setBackupEnabled(enabled: Boolean) { settingsFlow.value = settingsFlow.value.copy(enabled = enabled) }
+        override suspend fun setWifiOnly(wifiOnly: Boolean) { settingsFlow.value = settingsFlow.value.copy(wifiOnly = wifiOnly) }
+        override suspend fun setProviderConfig(providerId: String, endpoint: String?) {
+            settingsFlow.value = settingsFlow.value.copy(providerId = providerId, providerEndpoint = endpoint)
+        }
+        override suspend fun recordBackupAttempt(timestamp: Long) {}
+        override suspend fun recordBackupSuccess(timestamp: Long, remoteBackupId: String?) {}
+        override suspend fun recordBackupFailure(reason: String, authRequired: Boolean) {}
+        override suspend fun clearAuthenticationRequired() {}
+        override suspend fun resetBackupSettings() { settingsFlow.value = com.example.inputmonitor.domain.backup.model.BackupSettings() }
+    }
+
+    private class FakeBackupTokenStorage : com.example.inputmonitor.data.backup.security.BackupTokenStorage {
+        var token: String? = null
+        override suspend fun saveAuthToken(token: String) { this.token = token }
+        override suspend fun getAuthToken(): String? = token
+        override suspend fun clearAuthToken() { token = null }
+        override suspend fun hasAuthToken(): Boolean = token != null
+    }
+
+    private class FakeBackupRepository : com.example.inputmonitor.domain.backup.repository.BackupRepository {
+        override suspend fun uploadBackup(file: java.io.File, metadata: com.example.inputmonitor.domain.backup.model.BackupMetadata): com.example.inputmonitor.domain.backup.model.BackupResult =
+            com.example.inputmonitor.domain.backup.model.BackupResult.Success("id")
+        override suspend fun testConnection(endpoint: String, token: String?): com.example.inputmonitor.domain.backup.model.BackupResult =
+            com.example.inputmonitor.domain.backup.model.BackupResult.Success("ok")
+    }
+
+    private class FakeAutoBackupScheduler : com.example.inputmonitor.platform.backup.AutoBackupScheduler {
+        var isPeriodicScheduled = false
+        var isImmediateTriggered = false
+        var lastWifiOnly: Boolean? = null
+        var isCancelled = false
+
+        override fun schedulePeriodicBackup(wifiOnly: Boolean) {
+            isPeriodicScheduled = true
+            lastWifiOnly = wifiOnly
+            isCancelled = false
+        }
+        override fun triggerImmediateBackup(wifiOnly: Boolean) {
+            isImmediateTriggered = true
+        }
+        override fun cancelPeriodicBackup() {
+            isCancelled = true
+            isPeriodicScheduled = false
+        }
+    }
+
+    private lateinit var backupSettingsRepository: FakeBackupSettingsRepository
+    private lateinit var backupTokenStorage: FakeBackupTokenStorage
+    private lateinit var backupRepository: FakeBackupRepository
+    private lateinit var autoBackupScheduler: FakeAutoBackupScheduler
+
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
@@ -216,6 +272,10 @@ class SettingsViewModelTest {
         eventRepository = FakeEventRepository()
         preferencesRepository = FakePreferencesRepository()
         sessionManager = FakeSessionManager()
+        backupSettingsRepository = FakeBackupSettingsRepository()
+        backupTokenStorage = FakeBackupTokenStorage()
+        backupRepository = FakeBackupRepository()
+        autoBackupScheduler = FakeAutoBackupScheduler()
 
         deleteSessionUseCase = DeleteSessionUseCase(
             sessionRepository = sessionRepository,
@@ -246,6 +306,10 @@ class SettingsViewModelTest {
             deleteSessionUseCase = deleteSessionUseCase,
             deleteAllSessionsUseCase = deleteAllSessionsUseCase,
             deleteAllApplicationDataUseCase = deleteAllApplicationDataUseCase,
+            backupSettingsRepository = backupSettingsRepository,
+            backupTokenStorage = backupTokenStorage,
+            backupRepository = backupRepository,
+            autoBackupScheduler = autoBackupScheduler,
             dispatchers = testDispatchers
         )
     }
@@ -390,5 +454,75 @@ class SettingsViewModelTest {
         viewModel.dismissUserMessage()
         advanceUntilIdle()
         assertNull(viewModel.uiState.value.userMessage)
+    }
+
+    @Test
+    fun setAutomaticBackupEnabled_whenNotConfigured_opensDialogAndSetsError() = runTest {
+        viewModel.setAutomaticBackupEnabled(true)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.showConnectBackupDialog)
+        assertNotNull(viewModel.uiState.value.error)
+        assertFalse(viewModel.uiState.value.backupSettings.enabled)
+        assertFalse(autoBackupScheduler.isPeriodicScheduled)
+    }
+
+    @Test
+    fun connectBackup_success_persistsConfigAndClearsDialog() = runTest {
+        viewModel.connectBackup("https://backup.example.com/api", "my-secret-token")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.showConnectBackupDialog)
+        assertEquals("https://backup.example.com/api", backupSettingsRepository.settingsFlow.value.providerEndpoint)
+        assertEquals("my-secret-token", backupTokenStorage.token)
+        assertNotNull(viewModel.uiState.value.userMessage)
+    }
+
+    @Test
+    fun setAutomaticBackupEnabled_whenConfigured_schedulesPeriodicWork() = runTest {
+        backupSettingsRepository.setProviderConfig("https_rest", "https://cloud.example.com/api")
+        advanceUntilIdle()
+
+        viewModel.setAutomaticBackupEnabled(true)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.backupSettings.enabled)
+        assertTrue(autoBackupScheduler.isPeriodicScheduled)
+
+        // Now disable
+        viewModel.setAutomaticBackupEnabled(false)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.backupSettings.enabled)
+        assertTrue(autoBackupScheduler.isCancelled)
+    }
+
+    @Test
+    fun triggerBackupNow_triggersImmediateWork() = runTest {
+        backupSettingsRepository.setProviderConfig("https_rest", "https://cloud.example.com/api")
+        advanceUntilIdle()
+
+        viewModel.triggerBackupNow()
+        advanceUntilIdle()
+
+        assertTrue(autoBackupScheduler.isImmediateTriggered)
+        assertNotNull(viewModel.uiState.value.userMessage)
+    }
+
+    @Test
+    fun disconnectBackup_cancelsWorkClearsTokensAndDisables() = runTest {
+        backupSettingsRepository.setProviderConfig("https_rest", "https://cloud.example.com/api")
+        backupSettingsRepository.setBackupEnabled(true)
+        backupTokenStorage.saveAuthToken("token")
+        autoBackupScheduler.schedulePeriodicBackup(true)
+        advanceUntilIdle()
+
+        viewModel.disconnectBackup()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.backupSettings.enabled)
+        assertNull(backupSettingsRepository.settingsFlow.value.providerEndpoint)
+        assertNull(backupTokenStorage.token)
+        assertTrue(autoBackupScheduler.isCancelled)
     }
 }

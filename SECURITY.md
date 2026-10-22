@@ -259,15 +259,27 @@ Encryption at rest and explicit user export are separate boundaries. CSV export 
 
 ---
 
-# 12. Network Boundary
+# 12. Network Boundary & Automatic Cloud Backup
 
-Version 1 is local-first.
+The application is local-first with an optional, user-consented **Automatic Daily Cloud Backup** subsystem.
 
-Application events shall not require transmission to a remote server.
+### Security Boundary States:
 
-No covert background synchronization shall be implemented.
+1. **Automatic Backup OFF (Default):**
+   - The application functions as a completely offline local monitor.
+   - Zero background network workers or transmission routines execute.
+   - No data is transmitted across the network.
 
-If networking is introduced later, `SECURITY.md`, `SRS.md`, `Architecture.md`, `decision.md`, `tech.md`, and `flow.md` shall be reviewed before implementation.
+2. **Automatic Backup ON (User-Consented Opt-In):**
+   - Only explicitly authorized, redacted CSV backup data is transmitted to the user-authenticated cloud destination.
+   - Backups are scheduled approximately once every 24 hours via Android WorkManager.
+   - **Enforced Security Controls:**
+     - **TLS/HTTPS Mandatory:** Cleartext HTTP is strictly prohibited (`usesCleartextTraffic="false"`).
+     - **System Certificate Verification:** Standard X.509 validation is strictly enforced; insecure trust-all managers are forbidden.
+     - **Hardware-Backed Credential Storage:** Cloud API tokens and passwords are encrypted at rest using Android Keystore AES-256-GCM (`KeystoreBackupTokenStorage`). Plaintext persistence is prohibited.
+     - **Export Sanitization Invariant:** Network transmission uses the identical [ExportSessionUseCase] pipeline. Passwords, PINs, OTPs, and payment cards remain strictly redacted (`[REDACTED]`).
+     - **Immediate Revocation:** Disabling backup immediately cancels scheduled WorkManager jobs; disconnecting immediately purges stored authentication tokens from Android Keystore.
+     - **No Covert Tracking:** No analytics SDKs, advertising trackers, or telemetry endpoints exist. Network access is restricted exclusively to user-specified backup endpoints.
 
 ---
 

@@ -103,9 +103,17 @@ dependencies {
     // Core
     implementation("androidx.core:core-ktx:1.15.0")
 
+    // WorkManager for background scheduled backups
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
+
+    // OkHttp for secure TLS/HTTPS backup upload
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("androidx.work:work-testing:2.10.0")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")

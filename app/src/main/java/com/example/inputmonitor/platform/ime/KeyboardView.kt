@@ -1,6 +1,7 @@
 package com.example.inputmonitor.platform.ime
 
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
@@ -8,15 +9,15 @@ import android.media.AudioManager
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
-import android.view.MotionEvent
 import android.view.View
+import android.view.WindowInsets
 import android.widget.Button
 import android.widget.LinearLayout
 
 /**
  * High-performance, low-latency native Android view for the custom keyboard (DEVELOPMENT_GUIDELINES.md §4).
  *
- * Designed with zero-allocation updates on shift/layout changes to minimize GC pauses during typing.
+ * Includes an offline emoji picker using the device's emoji font.
  */
 class KeyboardView(
     context: Context,
@@ -25,12 +26,54 @@ class KeyboardView(
 
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
     private var currentLayout: KeyboardLayout? = null
+    private var showingEmoji = false
+    private var suggestions = emptyList<String>()
+    var onSuggestion: (String) -> Unit = {}
+    private var suggestionStrip: LinearLayout? = null
+    private var suggestionsAllowed = false
+
+    fun setSuggestionsAllowed(allowed: Boolean) {
+        suggestionsAllowed = allowed
+        setSuggestions(if (allowed) suggestions else emptyList())
+    }
+
+    fun setSuggestions(values: List<String>) {
+        suggestions = values
+        suggestionStrip?.let { strip ->
+            strip.removeAllViews()
+            if (values.isEmpty() && suggestionsAllowed) {
+                strip.addView(android.widget.TextView(context).apply {
+                    text = "Suggestions · autocorrect on Space"
+                    textSize = 13f
+                    setTextColor(textColor)
+                    gravity = Gravity.CENTER
+                    alpha = 0.65f
+                }, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+            }
+            values.forEach { value ->
+                strip.addView(createPickerButton(value, "Use suggestion $value") { onSuggestion(value) },
+                    LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
+            }
+            strip.visibility = if (suggestionsAllowed) View.VISIBLE else View.GONE
+        }
+    }
+    private val dark = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+    private val textColor = Color.parseColor(if (dark) "#E3E3E3" else "#202124")
+    private val surfaceColor = Color.parseColor(if (dark) "#202124" else "#E8EAED")
+    private val accentColor = Color.parseColor(if (dark) "#A8C7FA" else "#D3E3FD")
 
     init {
         orientation = VERTICAL
-        setBackgroundColor(Color.parseColor("#1C1B1F")) // Material 3 Dark Surface
+        setBackgroundColor(surfaceColor)
+        isFocusable = false
+        isFocusableInTouchMode = false
         val pad = dpToPx(4)
         setPadding(pad, pad, pad, pad)
+        setOnApplyWindowInsetsListener { _, insets ->
+            val bottom = insets.getInsets(WindowInsets.Type.navigationBars()).bottom
+            setPadding(pad, pad, pad, pad + bottom)
+            insets
+        }
     }
 
     /**
@@ -39,14 +82,59 @@ class KeyboardView(
     fun setLayout(layout: KeyboardLayout) {
         currentLayout = layout
         removeAllViews()
+        suggestionStrip = null
 
-        for (row in layout.rows) {
-            val rowView = createRowView(row)
+        if (showingEmoji && layout.type != KeyboardLayoutType.NUMERIC && layout.type != KeyboardLayoutType.PHONE) {
+            renderEmojiPicker()
+            return
+        }
+        showingEmoji = false
+        suggestionStrip = LinearLayout(context).apply { orientation = HORIZONTAL }.also {
+            addView(it, LayoutParams(LayoutParams.MATCH_PARENT, dpToPx(44)))
+        }
+        setSuggestions(suggestions)
+        for ((index, row) in layout.rows.withIndex()) {
+            val rowView = createRowView(row, bottomRow = index == layout.rows.lastIndex)
+            if (index == 1 && layout.type in listOf(KeyboardLayoutType.QWERTY, KeyboardLayoutType.EMAIL, KeyboardLayoutType.URI)) {
+                rowView.setPadding(dpToPx(16), 0, dpToPx(16), 0)
+            }
             addView(rowView)
         }
     }
 
-    private fun createRowView(row: KeyboardRow): LinearLayout {
+    /** A newly shown editor always starts with letters/numbers, not a stale emoji panel. */
+    fun startInput(layout: KeyboardLayout) {
+        showingEmoji = false
+        visibility = View.VISIBLE
+        setLayout(layout)
+        requestLayout()
+    }
+
+    private fun createPickerButton(label: String, description: String, action: () -> Unit): Button =
+        Button(context).apply {
+            text = label
+            contentDescription = description
+            isAllCaps = false
+            textSize = 16f
+            minWidth = 0
+            minimumWidth = 0
+            minHeight = 0
+            minimumHeight = 0
+            stateListAnimator = null
+            isFocusable = false
+            setPadding(0, 0, 0, 0)
+            setTextColor(textColor)
+            background = createKeyBackground(true)
+            setOnClickListener { action() }
+        }
+
+    private fun renderEmojiPicker() {
+        addView(EmojiPickerView(context, onKeyAction) {
+            showingEmoji = false
+            currentLayout?.let(::setLayout)
+        }, LayoutParams(LayoutParams.MATCH_PARENT, dpToPx(280)))
+    }
+    private fun createRowView(row: KeyboardRow, bottomRow: Boolean = false): LinearLayout {
         val rowLayout = LinearLayout(context).apply {
             orientation = HORIZONTAL
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, dpToPx(54)).apply {
@@ -56,23 +144,53 @@ class KeyboardView(
         }
 
         for (key in row.keys) {
-            val keyView = createKeyView(key)
+            // Use the bottom-row switcher position for emoji; long-press Space still switches IMEs.
+            val keyView = if (bottomRow && key.action == KeyAction.SwitchIme) {
+                createEmojiButton(key.weight)
+            } else createKeyView(key)
+            if (bottomRow && key.action == KeyAction.Space && row.keys.none { it.action == KeyAction.SwitchIme }
+                && currentLayout?.type != KeyboardLayoutType.NUMERIC && currentLayout?.type != KeyboardLayoutType.PHONE) {
+                rowLayout.addView(createEmojiButton(1f))
+            }
             rowLayout.addView(keyView)
         }
 
         return rowLayout
     }
 
+    private fun createEmojiButton(weight: Float): View = createPickerButton("☺", "Open emoji picker") {
+        showingEmoji = true
+        currentLayout?.let(::setLayout)
+    }.apply {
+        textSize = 24f
+        layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, weight).apply {
+            leftMargin = dpToPx(2)
+            rightMargin = dpToPx(2)
+        }
+    }
+
     private fun createKeyView(key: KeyModel): View {
         val button = Button(context).apply {
-            text = key.label
-            textSize = if (key.label.length > 2) 12f else 18f
-            setTextColor(Color.WHITE)
+            text = if (key.action == KeyAction.Space) "English" else key.label
+            contentDescription = when (key.action) {
+                KeyAction.Space -> "Space. Long press to change keyboard"
+                KeyAction.Backspace -> "Delete"
+                KeyAction.Shift -> "Shift"
+                else -> key.label
+            }
+            textSize = if (key.label.length > 2) 14f else 22f
+            setTextColor(if (key.action == KeyAction.Enter) Color.parseColor("#202124") else textColor)
             isAllCaps = false
+            isFocusable = false
+            minWidth = 0
+            minimumWidth = 0
+            minHeight = 0
+            minimumHeight = 0
+            stateListAnimator = null
             gravity = Gravity.CENTER
             setPadding(0, 0, 0, 0)
 
-            background = createKeyBackground(key.isSpecial)
+            background = createKeyBackground(key.isSpecial, key.action == KeyAction.Enter)
 
             val params = LayoutParams(0, LayoutParams.MATCH_PARENT, key.weight).apply {
                 leftMargin = dpToPx(2)
@@ -80,20 +198,17 @@ class KeyboardView(
             }
             layoutParams = params
 
-            setOnTouchListener { view, event ->
-                when (event.action) {
-                    MotionEvent.ACTION_DOWN -> {
-                        view.isPressed = true
-                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                        playKeySound()
-                        onKeyAction(key.action)
-                        true
-                    }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        view.isPressed = false
-                        true
-                    }
-                    else -> false
+            // Dispatch after a completed tap: rebuilding a layout on ACTION_DOWN can
+            // detach the pressed view, and scrolling the emoji grid must not type.
+            setOnClickListener {
+                performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                playKeySound()
+                onKeyAction(key.action)
+            }
+            if (key.action == KeyAction.Space) {
+                setOnLongClickListener {
+                    onKeyAction(KeyAction.SwitchIme)
+                    true
                 }
             }
         }
@@ -109,10 +224,14 @@ class KeyboardView(
         }
     }
 
-    private fun createKeyBackground(isSpecial: Boolean): StateListDrawable {
-        val normalColor = if (isSpecial) Color.parseColor("#322F37") else Color.parseColor("#49454F")
-        val pressedColor = if (isSpecial) Color.parseColor("#4A4458") else Color.parseColor("#635D6B")
-        val cornerRadius = dpToPx(8).toFloat()
+    private fun createKeyBackground(isSpecial: Boolean, isAction: Boolean = false): StateListDrawable {
+        val normalColor = when {
+            isAction -> accentColor
+            isSpecial -> Color.parseColor(if (dark) "#303134" else "#DADCE0")
+            else -> Color.parseColor(if (dark) "#3C4043" else "#FFFFFF")
+        }
+        val pressedColor = Color.parseColor(if (dark) "#5F6368" else "#BDC1C6")
+        val cornerRadius = dpToPx(if (isSpecial || isAction) 24 else 6).toFloat()
 
         val normalDrawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE

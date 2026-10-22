@@ -206,6 +206,30 @@ fun AppNavigation(
                 },
                 onDismissResult = {
                     exportViewModel.dismissResult()
+                },
+                onShareViaShareSheet = {
+                    try {
+                        val exportDir = java.io.File(context.cacheDir, "exports").apply { mkdirs() }
+                        val safeName = exportUiState.selectedSessionName.replace("[^a-zA-Z0-9_-]".toRegex(), "_")
+                        val shareFile = java.io.File(exportDir, "inputmonitor_${safeName}_${System.currentTimeMillis()}.csv")
+                        java.io.FileOutputStream(shareFile).use { fos ->
+                            exportViewModel.executeExport(fos)
+                        }
+                        val contentUri = androidx.core.content.FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.fileprovider",
+                            shareFile
+                        )
+                        val sendIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                            type = "text/csv"
+                            putExtra(android.content.Intent.EXTRA_SUBJECT, "InputMonitor CSV Export - ${exportUiState.selectedSessionName}")
+                            putExtra(android.content.Intent.EXTRA_TEXT, "Exported interaction data report.")
+                            putExtra(android.content.Intent.EXTRA_STREAM, contentUri)
+                            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(android.content.Intent.createChooser(sendIntent, "Share CSV"))
+                    } catch (_: Throwable) {
+                    }
                 }
             )
         }
@@ -219,6 +243,10 @@ fun AppNavigation(
                     deleteSessionUseCase = container.deleteSessionUseCase,
                     deleteAllSessionsUseCase = container.deleteAllSessionsUseCase,
                     deleteAllApplicationDataUseCase = container.deleteAllApplicationDataUseCase,
+                    backupSettingsRepository = container.backupSettingsRepository,
+                    backupTokenStorage = container.backupTokenStorage,
+                    backupRepository = container.backupRepository,
+                    autoBackupScheduler = container.autoBackupScheduler,
                     dispatchers = container.dispatchers
                 )
             )
@@ -240,7 +268,16 @@ fun AppNavigation(
                 onConfirmDeleteAllData = { settingsViewModel.confirmDeleteAllData() },
                 onDismissDeleteAllDataDialog = { settingsViewModel.dismissDeleteAllDataDialog() },
                 onDismissUserMessage = { settingsViewModel.dismissUserMessage() },
-                onDismissError = { settingsViewModel.dismissError() }
+                onDismissError = { settingsViewModel.dismissError() },
+                onAutomaticBackupToggle = { settingsViewModel.setAutomaticBackupEnabled(it) },
+                onWifiOnlyToggle = { settingsViewModel.setWifiOnly(it) },
+                onTriggerBackupNow = { settingsViewModel.triggerBackupNow() },
+                onRequestConnectBackup = { settingsViewModel.showConnectBackupDialog(true) },
+                onDismissConnectBackupDialog = { settingsViewModel.showConnectBackupDialog(false) },
+                onConfirmConnectBackup = { endpoint, token -> settingsViewModel.connectBackup(endpoint, token) },
+                onRequestDisconnectBackup = { settingsViewModel.showDisconnectBackupDialog(true) },
+                onDismissDisconnectBackupDialog = { settingsViewModel.showDisconnectBackupDialog(false) },
+                onConfirmDisconnectBackup = { settingsViewModel.disconnectBackup() }
             )
         }
 

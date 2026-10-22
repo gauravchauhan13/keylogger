@@ -3,6 +3,9 @@ package com.example.inputmonitor.data.database
 import android.content.Context
 import androidx.room.Room
 import com.example.inputmonitor.data.security.DatabaseKeyManager
+import net.zetetic.database.sqlcipher.SQLiteConnection
+import net.zetetic.database.sqlcipher.SQLiteDatabase
+import net.zetetic.database.sqlcipher.SQLiteDatabaseHook
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
 /**
@@ -20,11 +23,18 @@ object DatabaseProvider {
     ): AppDatabase {
         try {
             System.loadLibrary("sqlcipher")
-        } catch (_: Throwable) {
-            // Ignored if already loaded or in test environment
-        }
+        } catch (_: Throwable) {}
         val passphrase = keyManager.getOrCreateDatabasePassphrase()
-        val factory = SupportOpenHelperFactory(passphrase)
+        
+        // Add SQLiteDatabaseHook to disable mlock if needed (fixes ENOMEM on emulators)
+        val hook = object : SQLiteDatabaseHook {
+            override fun preKey(connection: SQLiteConnection) {
+                connection.execute("PRAGMA cipher_memory_security = OFF;", null, null)
+            }
+            override fun postKey(connection: SQLiteConnection) {}
+        }
+        
+        val factory = SupportOpenHelperFactory(passphrase, hook, false)
 
         return Room.databaseBuilder(
             context.applicationContext,

@@ -23,8 +23,9 @@ class KeyProcessorTest {
         val performedActions = mutableListOf<Int>()
         val sentKeyEvents = mutableListOf<Int>()
         var selectedTextToReturn: CharSequence? = null
+        var textBeforeCursor: String = ""
 
-        override fun getTextBeforeCursor(n: Int, flags: Int): CharSequence = ""
+        override fun getTextBeforeCursor(n: Int, flags: Int): CharSequence = textBeforeCursor.takeLast(n)
         override fun getTextAfterCursor(n: Int, flags: Int): CharSequence = ""
         override fun getSelectedText(flags: Int): CharSequence? = selectedTextToReturn
         override fun getCursorCapsMode(reqModes: Int): Int = 0
@@ -88,6 +89,23 @@ class KeyProcessorTest {
 
         assertTrue(result)
         assertEquals(listOf(" "), fakeConnection.committedText)
+    }
+
+    @Test
+    fun processKey_emoji_commitsCompleteSequence() {
+        val connection = FakeInputConnection()
+        val emoji = "👨‍👩‍👧‍👦"
+        assertTrue(processor.processKey(KeyAction.Character(emoji), connection))
+        assertEquals(listOf(emoji), connection.committedText)
+    }
+
+    @Test
+    fun processKey_backspace_deletesWholeOfferedEmoji() {
+        listOf("😀", "❤️", "🇮🇳", "👍🏽", "👨‍👩‍👧‍👦").forEach { emoji ->
+            val connection = FakeInputConnection().apply { textBeforeCursor = "hello$emoji" }
+            assertTrue(processor.processKey(KeyAction.Backspace, connection))
+            assertEquals(listOf(emoji.length to 0), connection.deletedSurrounding)
+        }
     }
 
     @Test
